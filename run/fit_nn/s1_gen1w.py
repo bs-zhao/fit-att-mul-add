@@ -30,14 +30,14 @@ names = [f"gen{i}" for i in range(1, 51)]
 
 for model_name in model_names:
     N_GEN = len(names)
-    dir_save = f"./outputs/s1_gen1/{model_name}/"
+    dir_save = f"../../outputs/s1_gen1/{model_name}/"
     if for_test == 1:
         names = ["gen1"]
         N_GEN = 1
-        dir_save = f"./outputs/s1_gen1_test/{model_name}/"
+        dir_save = f"../../outputs/s1_gen1_test/{model_name}/"
     os.makedirs(dir_save, exist_ok=True)
 
-    df = load_food_data('data/trial_eye.csv')
+    df = load_food_data('../../data/trial_eye.csv')
     all_subj = list(df['subj'].unique())
     model_info = model_infos[model_name]
 
