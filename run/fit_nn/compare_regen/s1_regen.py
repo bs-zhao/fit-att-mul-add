@@ -7,7 +7,7 @@ from tools.funcs import load_food_data
 from tools.model_info import model_infos,model_names
 dt=0.001;max_rt=14.5;feature='trial';sx='1';for_test=0;n_round=500;names=[f'gen{i}' for i in range(1,21)]
 for m in model_names:
- dst=f'../outputs/{"mr" if for_test else "real_data"}/{feature}/s1_gen{sx}/{m}/';os.makedirs(dst,exist_ok=True);df=load_food_data('../data/trial_eye.csv');ids=list(df.subj.unique());info=model_infos[m];pnames=info['free_pnames_ml'];ranges=info['free_pranges_ml'];dec=load_instance(f'../outputs/dpsRH{sx}_dp0.15/{feature}/{m}/ParameterDecoder/parameter_decoder.pkl');dec.batch_size=64;path_data=f'../outputs/s3_fe{sx}_maxT/real_data/fe.pkl'
+ dst=f'outputs/{"mr" if for_test else "real_data"}/{feature}/s1_gen{sx}/{m}/';os.makedirs(dst,exist_ok=True);df=load_food_data('data/trial_eye.csv');ids=list(df.subj.unique());info=model_infos[m];pnames=info['free_pnames_ml'];ranges=info['free_pranges_ml'];dec=load_instance(f'outputs/dpsRH{sx}_dp0.15/{feature}/{m}/ParameterDecoder/parameter_decoder.pkl');dec.batch_size=64;path_data=f'outputs/s3_fe{sx}_maxT/real_data/fe.pkl'
  for G in names:
   gen=[]
   for rd in tqdm(range(n_round),desc=f'{m} {G}'):

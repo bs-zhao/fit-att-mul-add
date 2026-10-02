@@ -2,18 +2,42 @@
 
 Behavioral SBI/model-comparison pipeline for the eight gaze-bias models.
 
-This repository deliberately mirrors the file layout and script interfaces of `Cognition-Decision-Modeling-Lab/adm-sbi/G19_v3/nn_rv1`. Only the parts required for the present binary food-choice dataset and the eight submitted models are changed.
+The analysis code follows the organization and interfaces of `Cognition-Decision-Modeling-Lab/adm-sbi/G19_v3/nn_rv1`, but all executable analysis code lives under `run/fit_nn/` rather than the repository root.
 
-- input data: `data/trial_eye.csv`
-- all generated data, checkpoints, predictions and comparison outputs: `outputs/`
-- parameter decoder: `data2param-flow` (`from data2param_flow import ParameterDecoder`)
-- simulator: original binary-food aDDM/aRACE equations in `c_bifood.pyx`
+```text
+fit-att-mul-add/
+├── data/                         # ignored
+├── outputs/                      # ignored
+├── packages/
+│   └── c_bifood/                 # installable local simulator package
+│       ├── c_bifood.pyx
+│       └── setup.py
+└── run/
+    └── fit_nn/
+        ├── s1_gen1w.py
+        ├── s2_getmaxRT.py
+        ├── s3_fe1.py
+        ├── s4_train_range_huber.py
+        ├── s5_fe_real_data.py
+        ├── s5_fe_real_data_maxT.py
+        ├── s5_fe_test_data_maxT.py
+        ├── tools/
+        └── compare_regen/
+```
 
-Run order follows `nn_rv1`: `s1_gen1w.py` -> `s2_getmaxRT.py` -> `s3_fe1.py` -> `s4_train_range_huber.py` -> `s5_fe_real_data*.py`, then `compare_regen/`.
-
-Before running, install `data2param-flow` and compile the simulator:
+`c_bifood` and `data2param-flow` are imported as installed packages. Install them first:
 
 ```bash
+pip install -e packages/c_bifood
 pip install git+https://github.com/Cognition-Decision-Modeling-Lab/data2param-flow.git
-python setup.py build_ext --inplace
 ```
+
+Run analysis scripts from the repository root, for example:
+
+```bash
+python run/fit_nn/s1_gen1w.py
+python run/fit_nn/s3_fe1.py
+python run/fit_nn/s4_train_range_huber.py
+```
+
+Input data are kept in `data/`; all simulations, feature files, checkpoints and model-comparison outputs are kept in `outputs/`.

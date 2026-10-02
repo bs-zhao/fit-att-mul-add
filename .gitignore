@@ -2,14 +2,13 @@
 /data/
 /outputs/
 
-# compiled simulator
+# installed/build artifacts
 *.so
 *.pyd
 *.dll
 *.dylib
 build/
-c_bifood.c
-c_bifood.cpp
+*.egg-info/
 
 # python
 __pycache__/
