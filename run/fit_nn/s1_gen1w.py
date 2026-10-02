@@ -7,14 +7,22 @@ import numpy as np
 from tqdm import tqdm
 
 from c_bifood import sim_trial_aDDM, sim_trial_aRACE
-from tools.model_info import model_infos, model_names
+from tools.model_info import model_infos
 from tools.funcs import load_food_data, make_params
 
 dt = 0.001
 max_rt = 14.5
 
-# Edit this slice exactly as in nn_rv1 when running models separately.
-model_names = model_names
+model_names = [
+    "aDDM_1",
+    "aDDM_2",
+    "aDDM_t",
+    "aDDM_g",
+    "aRACE_1",
+    "aRACE_2",
+    "aRACE_t",
+    "aRACE_g",
+]
 
 for_test = 0
 n_round = 500
