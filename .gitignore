@@ -1,0 +1,28 @@
+# Local datasets and generated outputs
+/data/
+/outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.dll
+*.egg-info/
+.venv/
+.env
+.env.*
+build/
+dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Figures / scratch exports are outputs, not source
+*.png
+*.jpg
+*.jpeg
+*.pdf
