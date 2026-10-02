@@ -1,28 +1,20 @@
-# Local datasets and generated outputs
+# local data / outputs
 /data/
 /outputs/
 
-# Python
-__pycache__/
-*.py[cod]
+# compiled simulator
 *.so
 *.pyd
 *.dll
-*.egg-info/
+*.dylib
+build/
+c_bifood.c
+c_bifood.cpp
+
+# python
+__pycache__/
+*.py[cod]
 .venv/
 .env
-.env.*
-build/
-dist/
-
-# IDE / OS
-.vscode/
-.idea/
 .DS_Store
 Thumbs.db
-
-# Figures / scratch exports are outputs, not source
-*.png
-*.jpg
-*.jpeg
-*.pdf
