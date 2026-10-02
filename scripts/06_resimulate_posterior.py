@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from fit_att_mul_add.data import load_current_data, subject_frame, subject_ids
-from fit_att_mul_add.model_info import MODEL_ORDER
+from fit_att_mul_add.model_info import MODEL_INFOS, MODEL_ORDER
 from fit_att_mul_add.simulation import simulate_subject
 
 p = argparse.ArgumentParser(description="Posterior-conditioned resimulation for model-comparison classifier")
@@ -18,6 +18,7 @@ p.add_argument("--gen-end", type=int, default=20, help="inclusive")
 p.add_argument("--subjects-per-file", type=int, default=500)
 p.add_argument("--seed", type=int, default=9876)
 p.add_argument("--max-rt", type=float, default=14.5)
+p.add_argument("--output-root", default="outputs/resim_raw")
 a = p.parse_args()
 
 models = MODEL_ORDER if a.model == "all" else [a.model]
@@ -49,7 +50,7 @@ for m_i, model in enumerate(models):
             subj["posterior_draw_index"] = j_draw
             generated.append(subj)
 
-        out = Path("outputs/resim_raw") / model / f"gen{gen}.pkl"
+        out = Path(a.output_root) / model / f"gen{gen}.pkl"
         out.parent.mkdir(parents=True, exist_ok=True)
         with out.open("wb") as f:
             pickle.dump(generated, f, protocol=4)
