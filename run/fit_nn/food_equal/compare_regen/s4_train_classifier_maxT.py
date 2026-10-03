@@ -1,4 +1,4 @@
-from data2param_flow import ParameterDecoder
+from data2param import ParameterDecoder
 import os
 import sys
 
@@ -28,7 +28,7 @@ dirs = [
     f'{output_root}/{base}/{feature_d}/s3_fe{sx}_maxT/{m}/'
     for m in model_names
 ]
-pnames = model_infos[model_names[-1]]['free_pnames_ml']
+pnames = model_infos[model_names[-1]]['free_pnames']
 
 dec = ParameterDecoder(
     decoder_type='classify',
