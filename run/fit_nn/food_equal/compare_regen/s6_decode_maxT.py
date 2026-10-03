@@ -1,9 +1,9 @@
 import os
 import sys
 
+import numpy as np
 import pandas as pd
-import torch
-from data2param_flow import load_instance
+from data2param import load_instance
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -19,6 +19,7 @@ model_names = [
 feature_d = 'trial'
 feature = 'trial'
 sx = '1'
+max_trial = 20000
 dp = 0.15
 save_name = '_'.join(model_names)
 output_root = '../../../../outputs/food_equal/compare_regen'
@@ -31,14 +32,16 @@ path_d2p = (
 path_data = f'../../../../outputs/food_equal/s3_fe{sx}_maxT/real_data/fe.pkl'
 
 dec = load_instance(path_d2p)
-dec.batch_size = 64
-prob = torch.softmax(
-    dec.predict([path_data], post_dropout=True)[0], dim=1
-).cpu().numpy()
+if not hasattr(dec, 'max_trial'):
+    dec.max_trial = 2000
+dec.batch_size = 1
 
-df = pd.DataFrame(prob, columns=model_names)
+out = dec.predict([path_data], post_dropout=True)[0].cpu().numpy()
+
+for i in range(out.shape[1]):
+    print(model_names[i], np.mean(out[:, i]))
+
 file_save = f'{output_root}/real_data/{feature_d}/s6_decode_{feature}/{save_name}.csv'
 os.makedirs(os.path.dirname(file_save), exist_ok=True)
-df.to_csv(file_save, index=False)
-print(df.mean().sort_values(ascending=False))
+pd.DataFrame(out, columns=model_names).to_csv(file_save, index=False)
 print(f'saved {file_save}')
