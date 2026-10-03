@@ -1,6 +1,7 @@
 # local data / outputs
 /data/
 /outputs/
+/packages/
 
 # installed/build artifacts
 *.so
