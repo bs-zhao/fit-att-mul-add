@@ -31,9 +31,9 @@ for_test = 0
 n_round = 500
 names = [f'gen{i}' for i in range(1, 21)]
 
-# All artifacts produced by compare_regen live here.  The internal layout
-# mirrors adm-sbi/G19_v3/nn_rv1/compare_regen/save/.
-output_root = '../../../../outputs/compare_regen'
+# All artifacts produced by compare_regen live under food_equal/compare_regen.
+# The internal layout mirrors adm-sbi/G19_v3/nn_rv1/compare_regen/save/.
+output_root = '../../../../outputs/food_equal/compare_regen'
 
 for m in model_names:
     base = 'mr' if for_test else 'real_data'

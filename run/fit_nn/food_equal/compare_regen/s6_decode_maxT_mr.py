@@ -17,7 +17,7 @@ feature = 'trial'
 sx = '1'
 dp = 0.15
 save_name = '_'.join(model_names)
-output_root = '../../../../outputs/compare_regen'
+output_root = '../../../../outputs/food_equal/compare_regen'
 
 path_d2p = (
     f'{output_root}/mr/{feature_d}/'

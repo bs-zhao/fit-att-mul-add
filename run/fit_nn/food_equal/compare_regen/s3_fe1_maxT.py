@@ -17,7 +17,7 @@ feature = 'trial'
 for_test = 0
 sx = '1'
 eye2 = np.eye(2)
-output_root = '../../../../outputs/compare_regen'
+output_root = '../../../../outputs/food_equal/compare_regen'
 
 for m in model_names:
     base = 'mr' if for_test else 'real_data'

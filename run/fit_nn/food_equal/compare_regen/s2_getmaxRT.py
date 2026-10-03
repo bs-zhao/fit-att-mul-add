@@ -20,7 +20,7 @@ model_names = [
 feature = 'trial'
 sx = '1'
 for_test = 0
-output_root = '../../../../outputs/compare_regen'
+output_root = '../../../../outputs/food_equal/compare_regen'
 
 for m in model_names:
     base = 'mr' if for_test else 'real_data'

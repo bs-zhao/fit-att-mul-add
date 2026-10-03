@@ -18,7 +18,7 @@ max_trial = 20000
 dp = 0.15
 save_name = '_'.join(model_names)
 base = 'mr' if for_test else 'real_data'
-output_root = '../../../../outputs/compare_regen'
+output_root = '../../../../outputs/food_equal/compare_regen'
 
 dirs = [
     f'{output_root}/{base}/{feature_d}/s3_fe{sx}_maxT/{m}/'
