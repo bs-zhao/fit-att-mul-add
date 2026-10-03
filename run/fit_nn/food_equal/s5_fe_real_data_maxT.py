@@ -8,11 +8,11 @@ sx = '1'
 dt = 0.001
 eye2 = np.eye(2)
 
-file_save = f"outputs/s3_fe{sx}_maxT/real_data/fe.pkl"
-df_save = f"outputs/s3_fe{sx}_maxT/real_data/df.csv"
+file_save = f"../../../outputs/food_equal/s3_fe{sx}_maxT/real_data/fe.pkl"
+df_save = f"../../../outputs/food_equal/s3_fe{sx}_maxT/real_data/df.csv"
 os.makedirs(os.path.dirname(file_save), exist_ok=True)
 
-df = load_food_data('data/trial_eye.csv')
+df = load_food_data('../../../data/food_equal/trial_eye.csv')
 all_subj = list(df['subj'].unique())
 df.to_csv(df_save, index=False)
 

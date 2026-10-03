@@ -19,7 +19,7 @@ def _parse_array(x,dtype=int):
     except Exception:
         s=s.strip('[]'); return np.asarray([],dtype=dtype) if not s else np.fromstring(s.replace(',',' '),sep=' ',dtype=dtype)
 
-def load_food_data(path='../data/trial_eye.csv'):
+def load_food_data(path='../../../data/food_equal/trial_eye.csv'):
     df=pd.read_csv(path); req=['subj','v0','v1','response','arr_ml3_left','arr_ml3_time']; miss=[x for x in req if x not in df.columns]
     if miss: raise ValueError(f'missing required columns: {miss}')
     df=df.copy(); df['arr_pos']=df['arr_ml3_left'].apply(lambda x:_parse_array(x,int)); df['arr_du']=df['arr_ml3_time'].apply(lambda x:_parse_array(x,int)); df=df[df.apply(lambda r:len(r.arr_pos)>0 and len(r.arr_pos)==len(r.arr_du),axis=1)].copy(); df['choice']=df['response'].astype(int); df['rt_tp']=df['arr_du'].apply(lambda x:int(np.sum(x))); df['rt']=df['rt_tp']*0.001; return df

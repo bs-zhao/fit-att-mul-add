@@ -13,8 +13,8 @@ gens = [f"gen{i}" for i in range(1, 51)]
 eye2 = np.eye(2)
 
 for model_name in model_names:
-    dir_gen = f"./outputs/s1_gen{sx}/{model_name}/"
-    dir_save = f"./outputs/s3_fe{sx}/{model_name}/"
+    dir_gen = f"../../../outputs/food_equal/s1_gen{sx}/{model_name}/"
+    dir_save = f"../../../outputs/food_equal/s3_fe{sx}/{model_name}/"
     os.makedirs(dir_save, exist_ok=True)
     param_names = model_infos[model_name]['free_pnames_ml']
 

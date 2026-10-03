@@ -30,14 +30,14 @@ names = [f"gen{i}" for i in range(1, 51)]
 
 for model_name in model_names:
     N_GEN = len(names)
-    dir_save = f"../../outputs/s1_gen1/{model_name}/"
+    dir_save = f"../../../outputs/food_equal/s1_gen1/{model_name}/"
     if for_test == 1:
         names = ["gen1"]
         N_GEN = 1
-        dir_save = f"../../outputs/s1_gen1_test/{model_name}/"
+        dir_save = f"../../../outputs/food_equal/s1_gen1_test/{model_name}/"
     os.makedirs(dir_save, exist_ok=True)
 
-    df = load_food_data('../../data/trial_eye.csv')
+    df = load_food_data('../../../data/food_equal/trial_eye.csv')
     all_subj = list(df['subj'].unique())
     model_info = model_infos[model_name]
 
@@ -65,7 +65,6 @@ for model_name in model_names:
                 arr_pos_trial = np.ascontiguousarray(np.asarray(arr_pos[i], dtype=np.int64))
                 arr_du_trial = np.ascontiguousarray(np.asarray(arr_du[i], dtype=np.int64))
 
-                # Preserve the observed gaze schedule, as in the submitted fitting pipeline.
                 if 'aDDM' in model_name:
                     (choice, rt, hit), info, *_ = sim_trial_aDDM(
                         params, numbers, arr_pos_trial, arr_du_trial,
