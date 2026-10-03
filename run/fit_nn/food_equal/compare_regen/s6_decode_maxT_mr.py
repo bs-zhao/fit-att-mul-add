@@ -1,7 +1,18 @@
 import glob,os,sys,pandas as pd,torch
 from data2param_flow import load_instance
 sys.path.append(os.path.join(os.path.dirname(__file__),'..'))
-from tools.model_info import model_names
+
+model_names = [
+    "aDDM_1",
+    "aDDM_2",
+    "aDDM_t",
+    "aDDM_g",
+    "aRACE_1",
+    "aRACE_2",
+    "aRACE_t",
+    "aRACE_g",
+]
+
 feature_d='trial';feature='trial';sx='1';dp=0.15;save_name='_'.join(model_names);dec=load_instance(f'../../../../outputs/food_equal/real_data/{feature_d}/dps_{feature_d}{sx}_dp{dp}_maxT/{feature}/{save_name}/ParameterDecoder/parameter_decoder.pkl');dec.batch_size=64;rows=[]
 for true_model in model_names:
  files=sorted(glob.glob(f'../../../../outputs/food_equal/real_data/{feature_d}/s3_fe{sx}_maxT/{true_model}/gen*.pkl'))

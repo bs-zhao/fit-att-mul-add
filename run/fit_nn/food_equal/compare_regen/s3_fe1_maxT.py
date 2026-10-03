@@ -1,7 +1,18 @@
 import os,pickle,sys,numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__),'..'))
 from tools.funcs import arr2tp,get_summary
-from tools.model_info import model_names
+
+model_names = [
+    "aDDM_1",
+    "aDDM_2",
+    "aDDM_t",
+    "aDDM_g",
+    "aRACE_1",
+    "aRACE_2",
+    "aRACE_t",
+    "aRACE_g",
+]
+
 dt=0.001;feature='trial';for_test=0;sx='1';eye2=np.eye(2)
 for m in model_names:
  base='mr' if for_test else 'real_data';src=f'../../../../outputs/food_equal/{base}/{feature}/s1_gen{sx}/{m}/';dst=f'../../../../outputs/food_equal/{base}/{feature}/s3_fe{sx}_maxT/{m}/';os.makedirs(dst,exist_ok=True)

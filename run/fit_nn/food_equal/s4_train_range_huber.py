@@ -1,5 +1,16 @@
 from data2param_flow import ParameterDecoder
-from tools.model_info import model_infos, model_names
+from tools.model_info import model_infos
+
+model_names = [
+    "aDDM_1",
+    "aDDM_2",
+    "aDDM_t",
+    "aDDM_g",
+    "aRACE_1",
+    "aRACE_2",
+    "aRACE_t",
+    "aRACE_g",
+]
 
 feature = 'trial'
 sx = '1'
