@@ -10,7 +10,7 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-]
+][1:2]
 
 feature = 'trial'
 sx = '1'
