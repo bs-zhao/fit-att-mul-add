@@ -10,6 +10,10 @@ model_names = [
     "aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g",
 ]
 
+model_names = [
+    "aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g",
+]
+
 feature_d = 'trial'
 feature = 'trial'
 for_test = 0
