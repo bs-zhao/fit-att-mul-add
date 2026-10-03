@@ -36,6 +36,7 @@ df.to_csv(df_save, index=False)
 
 fe_data = []
 n_skipped = 0
+skipped_trials = []
 
 for subj in all_subj:
     df_subj = df[df['subj'] == subj].copy()
@@ -45,16 +46,25 @@ for subj in all_subj:
     lst_fsmr, lst_pad_posdu, lst_pad_posduchoice = [], [], []
     lst_pad_fpos_onehot2, lst_pad_nlp1, lst_pad_nlp2, lst_pad_nlp1v = [], [], [], []
 
-    for _, row in df_subj.iterrows():
+    for row_idx, row in df_subj.iterrows():
         arr_pos = np.asarray(row['arr_pos'], dtype=np.int64)
         arr_du = np.asarray(row['arr_du'], dtype=np.int64)
         f_pos = arr2tp(arr_pos, arr_du)
 
-        if (
-            len(arr_pos) >= max_len_nf
-            or np.ceil(len(f_pos) / ds) >= np.floor(max_len_rt / ds)
-        ):
+        exceed_nf = len(arr_pos) >= max_len_nf
+        exceed_rt = np.ceil(len(f_pos) / ds) >= np.floor(max_len_rt / ds)
+        if exceed_nf or exceed_rt:
             n_skipped += 1
+            skipped_trials.append({
+                'subj': subj,
+                'row': int(row_idx),
+                'rt': float(row['rt']),
+                'rt_ms': int(len(f_pos)),
+                'nf': int(len(arr_pos)),
+                'reason': '+'.join([
+                    x for x, hit in [('nf', exceed_nf), ('rt', exceed_rt)] if hit
+                ]),
+            })
             continue
 
         choice = int(row['choice'])
@@ -145,3 +155,11 @@ with open(file_save, 'wb') as f:
 
 print(f'saved {file_save}')
 print(f'skipped trials exceeding fixed maxT: {n_skipped}')
+if skipped_trials:
+    print('skipped trial details:')
+    for x in skipped_trials:
+        print(
+            f"  subj={x['subj']} row={x['row']} "
+            f"rt={x['rt']:.3f}s rt_ms={x['rt_ms']} "
+            f"nf={x['nf']} reason={x['reason']}"
+        )
