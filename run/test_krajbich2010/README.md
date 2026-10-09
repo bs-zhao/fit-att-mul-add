@@ -31,6 +31,6 @@ Only produces outputs in `outputs/krajbich2010/s0_prepare_data/`:
 - `subject_summary.csv` — subject-level QA
 - `quality_report.json` — aggregate counts, value range, cutoff counts and encoding conventions
 
-**Important:** Source choice `1=left, 0=right` becomes `response 0=left, 1=right`. Source fixation ROI `1=left, 2=right` becomes `0=left, 1=right`. Ratings are not rescaled. Source RT and fixation durations are both in milliseconds.
+**Important:** The installed `c_bifood` simulator uses **choice 1=left, 0=right**, **fixation 1=left, 0=right**, and **`vs=[right_value,left_value]`**. Accordingly, the converter keeps source choice as-is, maps ROI `1→1` (left) and `2→0` (right), and sets `v0=rightrating`, `v1=leftrating`. Ratings are not rescaled. Source RT and fixation durations are in milliseconds.
 
 The current `food_equal/tools/funcs.py` loader sets RT equal to the **sum of fixation durations**, which may differ from the actual experimental RT. This stage makes no assumptions about missing time; evaluate `trial_diagnostics.csv` before moving on. No SBI models are fit by this script.
