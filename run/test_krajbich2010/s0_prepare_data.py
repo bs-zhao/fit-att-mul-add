@@ -73,10 +73,10 @@ def main():
                 raise ValueError(f'{field} changes within subject={subject}, trial={trial}')
 
         # Stata codebook: choice=1 left, 0 right; roi=1 left, 2 right.
-        # Existing binary-food pipeline: response=0 left, 1 right;
-        # fixation location=0 left, 1 right.
-        choice = 1 - int(group['choice'].iloc[0])
-        positions = (group['roi'].to_numpy(dtype=int) - 1).tolist()
+        # c_bifood simulator uses choice=1 left, 0 right; f=1 left, 0 right,
+        # and values ordered [right, left]. Keep data aligned to the SIMULATOR.
+        choice = int(group['choice'].iloc[0])
+        positions = (2 - group['roi'].to_numpy(dtype=int)).tolist()
         durations = np.rint(group['event_duration'].to_numpy(dtype=float)).astype(int)
         if (durations <= 0).any():
             raise ValueError(f'Rounded fixation duration is nonpositive: subject={subject}, trial={trial}')
@@ -86,8 +86,8 @@ def main():
         prepared.append({
             'subj': to_json_number(subject),
             'trial': to_json_number(trial),
-            'v0': float(group['leftrating'].iloc[0]),
-            'v1': float(group['rightrating'].iloc[0]),
+            'v0': float(group['rightrating'].iloc[0]),
+            'v1': float(group['leftrating'].iloc[0]),
             'response': choice,
             'arr_ml3_left': str(positions),
             'arr_ml3_time': str(durations.tolist()),
@@ -138,8 +138,9 @@ def main():
         'rt_gap_p95_ms': float(np.percentile(rt_gap, 95)),
         'rt_gap_abs_gt_50_ms': int((np.abs(rt_gap) > 50).sum()),
         'rt_gap_negative_count': int((rt_gap < 0).sum()),
-        'choice_encoding': '0=left, 1=right (reversed from source)',
-        'fixation_encoding': '0=left, 1=right (source ROI minus one)',
+        'choice_encoding': '1=left, 0=right (same as source; matches c_bifood)',
+        'fixation_encoding': '1=left, 0=right (2 - source ROI; matches c_bifood)',
+        'value_encoding': 'v0=right, v1=left (matches c_bifood values=[right,left])',
         'time_unit': 'milliseconds for arr_ml3_time and rt_*_ms',
         'note': 'No missing inter-fixation or pre-fixation time was imputed. '
                 'Existing load_food_data derives RT from sum of fixation durations, '
