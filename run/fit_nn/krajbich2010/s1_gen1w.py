@@ -22,7 +22,7 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-][-2:]
+][2:4]
 
 for_test = 0
 n_round = 500
