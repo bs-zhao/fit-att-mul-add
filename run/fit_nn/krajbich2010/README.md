@@ -77,3 +77,57 @@ Detailed MR switches are documented inside the compare_regen scripts.
 
 All outputs: `outputs/krajbich2010/`. No existing `food_equal`
 training files or models are touched.
+
+## Before any full run: preflight
+
+From repository root:
+
+```bash
+git pull --ff-only
+python run/fit_nn/krajbich2010/preflight.py
+```
+
+The preflight parses all scripts, verifies the shared priors and Scheme-A
+RT, confirms the raw recorded RT column is preserved and reports any missing
+`c_bifood`, `data2param_flow`, or `data2param` package. No outputs
+are written. **A GitHub commit is not a completed runtime test**:
+run this and the small smoke generation before full-scale simulation.
+
+## Recommended OSC Slurm workflow
+
+```bash
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE
+python run/fit_nn/krajbich2010/preflight.py
+sbatch run/fit_nn/krajbich2010/simulate_array.sbatch
+```
+
+Wait until all 8 Slurm array tasks have finished and each model has
+`gen1.pkl` through `gen50.pkl`; do not start feature extraction prematurely.
+
+```bash
+python run/fit_nn/krajbich2010/s2_getmaxRT.py
+sbatch run/fit_nn/krajbich2010/features_array.sbatch
+```
+
+Wait until all eight feature-extraction jobs finish; then:
+
+```bash
+sbatch run/fit_nn/krajbich2010/train_array.sbatch
+```
+
+`simulate_array.sbatch`, `features_array.sbatch` and
+`train_array.sbatch` each dispatch one independent model per array task
+so model outputs do not collide. The Slurm account and environment
+`PAS2943` / `/users/PAS2197/benson31/yes/bin/python` were inherited
+from the original pipeline; adjust them on OSC if needed. Simulator
+jobs are CPU-only; train_array requests one GPU per task. Jobs may
+require more than 24 hours; check cluster limits and job logs.
+
+For model comparison, the classifier uses the legacy `data2param`
+module, while per-model parameter estimation uses `data2param_flow`.
+The MR track uses `--for-test` switches separately on
+`compare_regen/s1_regen.py`, `compare_regen/s2_getmaxRT.py`,
+`compare_regen/s3_fe1_maxT.py` and
+`compare_regen/s4_train_classifier_maxT.py`, preserving the distinct
+`mr` output directory. `s6_decode_maxT_mr.py` decodes independent
+model-recovery test simulations.
