@@ -71,7 +71,7 @@ def main():
         if not found:
             print(f'  Install or activate the same environment used by food_equal for {p}')
 
-    data_path = ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv'
+    data_path = ROOT / 'data/krajbich2010/trial_eye.csv'
     assert data_path.is_file(), (
         f'Missing {data_path}; run python run/test_krajbich2010/s0_prepare_data.py'
     )
