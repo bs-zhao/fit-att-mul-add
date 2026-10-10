@@ -197,3 +197,34 @@ diagnostic screening thresholds, not scientific or publication criteria.
 The four gaze branches within each architecture share identical d/a
 bounds. The script never edits the production priors. Recorded RT and
 summed fixation-duration RT still require a consistent modeling decision.
+
+## Step 5b — Targeted rectangles following the 12-subject S5 results
+
+The 12-subject S5 validation found only `s3_shared` passed all the provisional
+thresholds for both DDM and ACC; both `wide_1` and `wide_2` failed.
+The current common baseline d/a ranges (identical across all four gaze
+branches per architecture) are:
+
+- DDM: d [0.05, 2.5], a [2, 10]
+- ACC: d [0.025, 2], a [1.5, 15]
+
+The next targeted test explores three specific rectangles per architecture,
+defined in `s5_candidate_rectangles.json`:
+
+- `raised_floor` increases a_min to suppress extremely fast decisions.
+- `trimmed_ceiling` increases d_min and lowers a_max to limit no-hits.
+- `balanced_wide` makes more modest changes in all four bounds to test a
+  wider rectangle without the extreme tails of `wide_2`.
+
+Run:
+
+```bash
+git pull --ff-only
+python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared raised_floor trimmed_ceiling balanced_wide --n-subjects 12 --n-draws 12 --n-trials 20 --output outputs/krajbich2010/s5_targeted_rectangles
+```
+
+This runs 92,160 simulator calls (8 models × 4 candidate rectangles × 12
+subjects × 12 parameter draws × 20 trials). Inspect `candidate_ranking.csv`,
+`model_summary.csv`, `subject_summary.csv` and `s4_raw/draw_diagnostics.csv`.
+This is diagnostic only and does not change production priors, equations,
+or the unresolved fixation-versus-recorded RT observation protocol.
