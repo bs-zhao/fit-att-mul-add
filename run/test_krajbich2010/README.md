@@ -78,3 +78,13 @@ python run/test_krajbich2010/s3_prior_coverage.py --n-source-subjects 4 --n-draw
 Produces `outputs/krajbich2010/s3_prior_coverage/coverage_summary.csv`, `parameter_draws.csv`, and `coverage_report.json`. Uses identical selected empirical trials across all eight model families, samples model-specific prior parameters, and explores diagnostic `d` multipliers 1, 0.5, 0.25 and boundary `a` multipliers 1, 2. Each baseline configuration is preserved. All simulator invocations use the existing c_bifood package; no equations are modified. Values outside original priors are exploratory and **must not be silently used for SBI training**.
 
 **Evaluation**: compare hit rate, simulated RT median, 25%-window coverage of recorded versus fixation-summed RT, and conditional choice agreement. No model inference should be drawn from this test. RT discrepancies remain unresolved; do not commence full SBI until the evidence supports a consistent observation protocol.
+
+## Step 3b — Targeted accumulator coverage extension
+
+The original 36,864-simulation diagnostic yielded very short ACC RT under the original d/a priors. To avoid repeating DDM tests, s3 now accepts `--models` to select just accumulator models. Test smaller d and larger a without changing the fitted model equations or prior definitions:
+
+```bash
+python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 4 --n-draws 12 --n-trials 24 --d-scales 0.25 0.125 0.0625 --a-scales 2 3 4 --output outputs/krajbich2010/s3_prior_coverage_acc_extended
+```
+
+Review `coverage_summary.csv` and `parameter_draws.csv` for RT match, hit rate and choice consistency. These diagnostic multipliers do not change the official SBI priors. Very slow/no-hit trials are censored by `max_rt=14.5`, so never use hit-only RT alone as sufficient evidence of coverage.
