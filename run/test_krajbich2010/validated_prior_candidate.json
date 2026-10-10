@@ -1,0 +1,74 @@
+{
+  "status": "independent_holdout_screen_passed__pending_rt_observation_protocol",
+  "source": "Thomas et al. 2019 Experiment 1 / Krajbich et al. 2010",
+  "validation": {
+    "development_output": "outputs/krajbich2010/s5_targeted_rectangles",
+    "holdout_output": "outputs/krajbich2010/s5_holdout_validation",
+    "development_n_subjects": 12,
+    "holdout_n_subjects": 27,
+    "development_n_simulations": 92160,
+    "holdout_n_simulations": 103680,
+    "candidate": "balanced_wide",
+    "criteria": "Per model: fast_rt_rate(<300ms)<=0.05; timeout_rate<=0.10; pathological_draw_fraction<=0.15; recorded_rt_coverage_fraction>=0.20 (hit_rate>=0.9 and median RT ratio 0.5-2.0)",
+    "development_passes_screen": {
+      "DDM": true,
+      "ACC": true
+    },
+    "independent_holdout_passes_screen": {
+      "DDM": true,
+      "ACC": true
+    },
+    "notes": [
+      "A passed diagnostic is not proof of optimal priors.",
+      "Simulation stochasticity in c_bifood uses libc rand and is not wholly controlled by NumPy seed."
+    ]
+  },
+  "maximum_time": {
+    "observed_max_recorded_rt_ms": 23572,
+    "margin_fraction": 0.2,
+    "simulation_max_rt_s": 28.287,
+    "proposed_MAX_LEN_RT_ms": 28287,
+    "proposed_MAX_LEN_NF": 128
+  },
+  "shared_uniform_priors": {
+    "DDM": {
+      "models": [
+        "aDDM_1",
+        "aDDM_2",
+        "aDDM_t",
+        "aDDM_g"
+      ],
+      "d": [
+        0.06,
+        2.8
+      ],
+      "a": [
+        2.3,
+        10.5
+      ]
+    },
+    "ACC": {
+      "models": [
+        "aRACE_1",
+        "aRACE_2",
+        "aRACE_t",
+        "aRACE_g"
+      ],
+      "d": [
+        0.035,
+        2.3
+      ],
+      "a": [
+        2,
+        14.5
+      ]
+    }
+  },
+  "mechanism_parameters": "Keep each branch's original free/fixed theta, gamma and other parameters from run/fit_nn/food_equal/tools/model_info.py until explicitly revised.",
+  "pending": "Before training, define a consistent RT observation model: existing load_food_data overwrites RT with sum of option fixation durations; original experimental RT includes extra intervals (mean about 355ms). The simulator has fixed ndt=0 and uses a fixation sequence with last fixation extended. Do not silently fit against inconsistent RT definitions.",
+  "files_must_remain_separate": [
+    "data/krajbich2010/",
+    "outputs/krajbich2010/",
+    "run/fit_nn/food_equal/"
+  ]
+}
