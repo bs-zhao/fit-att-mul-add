@@ -55,7 +55,7 @@ for m in model_names:
     dst = f'{output_root}/{base}/{feature}/s1_gen{sx}/{m}/'
     os.makedirs(dst, exist_ok=True)
 
-    df = load_food_data('../../../../outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
+    df = load_food_data('../../../../data/krajbich2010/trial_eye.csv')
     ids = list(df.subj.unique())
     info = model_infos[m]
     pnames = info['free_pnames_ml']
