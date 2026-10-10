@@ -88,3 +88,28 @@ python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE
 ```
 
 Review `coverage_summary.csv` and `parameter_draws.csv` for RT match, hit rate and choice consistency. These diagnostic multipliers do not change the official SBI priors. Very slow/no-hit trials are censored by `max_rt=14.5`, so never use hit-only RT alone as sufficient evidence of coverage.
+
+## Step 3c — Validate a *shared* candidate prior against more subjects
+
+The extended 4-subject diagnostic suggests one **common ACC** pair of scales,
+`d×0.25, a×3`, rather than selecting a different scale for each gaze model.
+This is a candidate for validation only, not a change to `model_info.py`.
+For DDM, the previous diagnostic suggested a common `d×0.5, a×2` setting.
+
+Run both commands from the project root:
+
+```bash
+python run/test_krajbich2010/s3_prior_coverage.py --models aDDM_1 aDDM_2 aDDM_t aDDM_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.5 --a-scales 2 --output outputs/krajbich2010/s3_prior_coverage_ddm_validation
+python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.25 --a-scales 3 --output outputs/krajbich2010/s3_prior_coverage_acc_validation
+```
+
+Each run has `4 × 12 × 16 × 40 = 30,720` simulation calls (61,440 total).
+Both invocations use the same NumPy seed and the same selected subjects/trials.
+Check both `coverage_summary.csv` and `parameter_draws.csv`:
+mean and quantiles of hit rates across draws, RT ratio against **recorded RT**
+and against **fixation-summed RT**, choice agreement, and coverage across subjects.
+
+**Caution:** Even if RT coverage passes, the experimental RT is systematically
+longer than the sum of option-fixation durations; fitting to original RT with
+the current `ndt=0` model could attribute unobserved inter-fixation time to
+decision accumulation. Keep that observation-model limitation explicit.
