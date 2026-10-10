@@ -53,6 +53,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--input', type=Path, default=ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
     ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/s3_prior_coverage')
+    ap.add_argument('--models', nargs='+', choices=MODEL_NAMES, default=MODEL_NAMES,
+                    help='Optional model subset for a targeted diagnostic sweep')
     ap.add_argument('--n-source-subjects', type=int, default=4)
     ap.add_argument('--n-draws', type=int, default=8)
     ap.add_argument('--n-trials', type=int, default=24)
@@ -96,7 +98,7 @@ def main():
         datasets.append((subj, make_trials(rows)))
 
     rows = []
-    for model in MODEL_NAMES:
+    for model in args.models:
         sim = sim_trial_aDDM if model.startswith('aDDM') else sim_trial_aRACE
         for subj, trials in datasets:
             target_original = float(np.median([t['rt_original'] for t in trials]))
@@ -158,6 +160,7 @@ def main():
     summary.to_csv(args.output / 'coverage_summary.csv', index=False)
     report = {
         'source_subjects': [float(s) for s in selected_subjects],
+        'models': args.models,
         'draws_per_subject_model': args.n_draws,
         'trials_per_subject': args.n_trials,
         'n_total_simulations': int(len(draws) * args.n_trials),
