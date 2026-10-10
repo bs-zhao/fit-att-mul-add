@@ -51,7 +51,7 @@ for model_name in model_names:
         dir_save = f"../../../outputs/krajbich2010/s1_gen1_test/{model_name}/"
     os.makedirs(dir_save, exist_ok=True)
 
-    df = load_food_data('../../../outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
+    df = load_food_data('../../../data/krajbich2010/trial_eye.csv')
     all_subj = list(df['subj'].unique())
     model_info = model_infos[model_name]
 
