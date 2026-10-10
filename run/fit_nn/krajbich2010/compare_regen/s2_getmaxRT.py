@@ -1,14 +1,10 @@
-from pathlib import Path as _Path
-import os as _os
-_SCRIPT_DIR = _Path(__file__).resolve().parent
-_os.chdir(_SCRIPT_DIR)
 import os
 import pickle
 import sys
 
 import numpy as np
 
-sys.path.append(str(_SCRIPT_DIR.parent))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 model_names = [
     "aDDM_1",
@@ -23,11 +19,7 @@ model_names = [
 
 feature = 'trial'
 sx = '1'
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument('--for-test', action='store_true')
-args = ap.parse_args()
-for_test = int(args.for_test)
+for_test = 0
 output_root = '../../../../outputs/krajbich2010/compare_regen'
 
 for m in model_names:

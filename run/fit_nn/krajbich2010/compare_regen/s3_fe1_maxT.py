@@ -1,14 +1,10 @@
-from pathlib import Path as _Path
-import os as _os
-_SCRIPT_DIR = _Path(__file__).resolve().parent
-_os.chdir(_SCRIPT_DIR)
 import os
 import pickle
 import sys
 
 import numpy as np
 
-sys.path.append(str(_SCRIPT_DIR.parent))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from tools.funcs import arr2tp, get_summary
 from tools.maxT import MAX_LEN_NF, MAX_LEN_RT
 
@@ -21,14 +17,7 @@ model_names = [
 dt = 0.001
 ds = 3
 feature = 'trial'
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument('--for-test', action='store_true')
-ap.add_argument('--models', nargs='+', choices=model_names, default=model_names)
-ap.add_argument('--n-gen', type=int, default=20)
-args = ap.parse_args()
-for_test = int(args.for_test)
-model_names = args.models
+for_test = 0
 sx = '1'
 max_len_nf = MAX_LEN_NF
 max_len_rt = MAX_LEN_RT
@@ -46,7 +35,7 @@ for m in model_names:
     os.makedirs(dst, exist_ok=True)
     n_skipped = 0
 
-    for g in [f'gen{i}' for i in range(1, args.n_gen + 1)]:
+    for g in [f'gen{i}' for i in range(1, 21)]:
         file_in = f'{src}/{g}.pkl'
         if not os.path.exists(file_in):
             print(f'skip missing {file_in}')

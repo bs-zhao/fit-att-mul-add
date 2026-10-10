@@ -1,7 +1,3 @@
-from pathlib import Path as _Path
-import os as _os
-_SCRIPT_DIR = _Path(__file__).resolve().parent
-_os.chdir(_SCRIPT_DIR)
 import os
 import sys
 
@@ -9,7 +5,7 @@ import numpy as np
 import pandas as pd
 from data2param import load_instance
 
-sys.path.append(str(_SCRIPT_DIR.parent))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 model_names = [
     "aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g",
