@@ -2,8 +2,8 @@
   "status": "independent_holdout_screen_passed__pending_rt_observation_protocol",
   "source": "Thomas et al. 2019 Experiment 1 / Krajbich et al. 2010",
   "validation": {
-    "development_output": "outputs/krajbich2010/s5_targeted_rectangles",
-    "holdout_output": "outputs/krajbich2010/s5_holdout_validation",
+    "development_output": "outputs/krajbich2010/tests/s5_targeted_rectangles",
+    "holdout_output": "outputs/krajbich2010/tests/s5_holdout_validation",
     "development_n_subjects": 12,
     "holdout_n_subjects": 27,
     "development_n_simulations": 92160,
