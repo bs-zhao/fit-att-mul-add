@@ -1,142 +1,105 @@
-# Krajbich 2010 isolated 8-model SBI pipeline
+# Krajbich 2010: minimal adaptation of `food_equal`
 
-Mirrors `run/fit_nn/food_equal/` with unchanged model equations and file names.
-Data and outputs never overlap food_equal. Execute commands below from repository
-root; each entry script sets its own working directory.
+**Source of truth:** `run/fit_nn/food_equal/`. Every matching Python and
+Slurm script here is copied from the source with ONLY the substitutions below.
+No new CLI arguments, caching, data-processing algorithms, neural-network
+architectures, or training hyperparameters have been introduced.
 
-## Input and RT protocol
+## Allowed deviations
 
-Prepare `data/krajbich2010/trial_eye.csv` from
-`data/krajbich2010/original/data_nature2010.dta` using
-`python run/test_krajbich2010/s0_prepare_data.py`.
+1. Input CSV: `../../../data/krajbich2010/trial_eye.csv` in the main
+   pipeline and `../../../../data/krajbich2010/trial_eye.csv` in
+   `compare_regen/`. Original experiment RT is retained in this CSV as
+   `rt_original_ms`; fitting uses **Scheme A**, the sum of fixation durations
+   (exactly the source loader's definition).
+2. All output paths: replace `outputs/food_equal` with
+   `outputs/krajbich2010`; keep the same subdirectory and file naming.
+3. `tools/model_info.py`: shared DDM `d=(0.06,2.8)`, `a=(2.3,10.5)`;
+   shared ACC `d=(0.035,2.3)`, `a=(2.0,14.5)`. All theta, gamma,
+   other fixed/free parameters, and model equations unchanged.
+4. `tools/maxT.py`: `MAX_LEN_RT=28287` ms. `s1_gen1w.py` and
+   `compare_regen/s1_regen.py`: `max_rt=28.287` s.
+   `s2_getmaxRT.py`: `real_max_tp=28287`.
+   The maximum is 20% above the largest **original recorded** RT.
+5. Necessary **eight-model experiment selection**: remove `[1:2]` after
+   the model list in `s4_train_range_huber.py`. In the four classifier
+   feature/decode scripts, remove the SECOND assignment that restricted
+   `model_names` to four DDMs. All eight models thus run; otherwise those
+   scripts retain precisely the source implementation. In particular,
+   the classifier's `pnames = model_infos[model_names[-1]]['free_pnames']`
+   remains unchanged.
+6. `tools/see_sample.py`: point its example pickle path to the
+   corresponding Krajbich output.
 
-**Scheme A:** empirical RT for SBI equals the **sum of option fixation
-durations**. The original recorded trial RT is preserved separately as
-`rt_original_ms` in `trial_eye.csv` and the exported
-`outputs/krajbich2010/s3_fe1_maxT/real_data/df.csv`. It is not
-used in `fe.pkl` or trained decoders. The experimental RT includes extra
-time not represented in fixation-event sequences; do not treat model results
-as fits to full recorded RT. Simulated RT remains simulated decision time,
-with fixed `ndt=0` from the original equations.
+The classifier continues to use **`data2param`** (the legacy classifier)
+and the parameter decoder continues to use **`data2param_flow`**.
+The 19 source-matched scripts have been checked for exact textual equality
+after the above allowed transformations.
 
-Encoding: `vs=[right,left]`, response 1=left/0=right,
-and fixation position 1=left/0=right.
+## Directory conventions
 
-## Priors and limits
-
-Eight models are enabled (DDM/ACC × NoAtt/AttOnly/Mul/Add).
-All four branches within DDM share `d~U(0.06,2.80)`, `a~U(2.30,10.50)`.
-All four ACC branches share `d~U(0.035,2.30)`, `a~U(2.00,14.50)`.
-Theta/gamma prior ranges are unchanged from food_equal.
-Maximum simulation time `28.287 s`; fixed sequence maxT `28287 ms`,
-based on the largest recorded RT plus 20%; max number fixations 128.
-These are screened prior candidates, not evidence of optimality.
-
-## Prepare / smoke-test
-
-```bash
-python run/test_krajbich2010/s0_prepare_data.py
-python run/fit_nn/krajbich2010/s5_fe_real_data_maxT.py
-python run/fit_nn/krajbich2010/s1_gen1w.py --models aDDM_1 --n-round 2 --n-gen 1 --for-test
-python run/fit_nn/krajbich2010/s5_fe_test_data_maxT.py
+```text
+data/krajbich2010/
+  original/data_nature2010.dta
+  trial_eye.csv              # transformed experimental input
+outputs/krajbich2010/
+  tests/                    # exploratory validation, separate from training
+  s1_gen1/                  # training simulations
+  s1_gen1_test/             # model recovery simulations
+  s3_fe1/
+  s3_fe1_maxT/
+  dpsRH1_dp0.15/
+  compare_regen/
 ```
 
-Smoke output is in `outputs/krajbich2010/s1_gen1_test`;
-it does not fill the full training set.
+The preprocessing / prior-calibration scripts remain in
+`run/test_krajbich2010/`. Run its `s0_prepare_data.py` from the repository
+root if the trial CSV must be regenerated.
 
-## Main simulator → feature extraction → flow SBI
+## Running: EXACT same working-directory convention as food_equal
 
-```bash
-python run/fit_nn/krajbich2010/s1_gen1w.py
-python run/fit_nn/krajbich2010/s2_getmaxRT.py
-python run/fit_nn/krajbich2010/s3_fe1.py
-python run/fit_nn/krajbich2010/s4_train_range_huber.py
-```
-
-Full simulation uses 8 models × 50 files × 500 synthetic subjects.
-`s4_train_range_huber.py` now trains all eight models; it uses
-**data2param_flow**, not the older classifier package.
-
-## Posterior predictive model comparison
-
-Only after all eight parameter decoders are trained:
+**Important:** The original scripts use relative paths and do NOT change
+the process working directory. Therefore **do not invoke them from the
+repository root**; switch to their containing directory first. The earlier
+`--models`, `--n-round`, `--n-gen`, `--epochs` and
+`--for-test` CLI options were removed to preserve source parity. Do not
+reuse Slurm jobs that pass those arguments.
 
 ```bash
-python run/fit_nn/krajbich2010/compare_regen/s1_regen.py
-python run/fit_nn/krajbich2010/compare_regen/s2_getmaxRT.py
-python run/fit_nn/krajbich2010/compare_regen/s3_fe1_maxT.py
-python run/fit_nn/krajbich2010/compare_regen/s4_train_classifier_maxT.py
-python run/fit_nn/krajbich2010/compare_regen/s6_decode_maxT.py
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/krajbich2010
+python s5_fe_real_data_maxT.py
+python s1_gen1w.py
+python s2_getmaxRT.py
+python s3_fe1.py
+sbatch train.sbatch
 ```
 
-Model classifier is the **legacy data2param** implementation and contains
-all eight models. For MR, generate `s1_gen1w.py --for-test` and
-`s5_fe_test_data_maxT.py`, train an MR classifier on independently
-regenerated `--for-test` data, and decode with `s6_decode_maxT_mr.py`.
-Detailed MR switches are documented inside the compare_regen scripts.
+These are **successive stages**, not commands to start concurrently.
+Wait for all eight models' 50 simulation files before feature extraction,
+and wait for feature extraction to finish before training. The source
+`train.sbatch` and its `20000` training epochs, early-stopping setting,
+environment and Slurm directives are unchanged. This clone runs all eight
+parameter networks sequentially within one invocation, instead of the
+source's `[1:2]` single-network restriction.
 
-All production outputs: `outputs/krajbich2010/`. The prior-predictive and calibration test artifacts live exclusively under `outputs/krajbich2010/tests/`. No existing `food_equal`
-training files or models are touched.
-
-## Before any full run: preflight
-
-From repository root:
+After all eight parameter networks finish:
 
 ```bash
-git pull --ff-only
-python run/fit_nn/krajbich2010/preflight.py
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/krajbich2010/compare_regen
+python s1_regen.py
+python s2_getmaxRT.py
+python s3_fe1_maxT.py
+sbatch train.sbatch
+python s6_decode_maxT.py
 ```
 
-The preflight parses all scripts, verifies the shared priors and Scheme-A
-RT, confirms the raw recorded RT column is preserved and reports any missing
-`c_bifood`, `data2param_flow`, or `data2param` package. No outputs
-are written. **A GitHub commit is not a completed runtime test**:
-run this and the small smoke generation before full-scale simulation.
+Again wait for regeneration, feature extraction and classifier training
+between successive stages. To use the original model recovery (MR)
+path, manually change the scripts' original `for_test` variables to
+`1` as in the source; no new CLI flags exist.
 
-## Recommended OSC Slurm workflow
-
-```bash
-cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE
-python run/fit_nn/krajbich2010/preflight.py
-sbatch run/fit_nn/krajbich2010/simulate_array.sbatch
-```
-
-Wait until all 8 Slurm array tasks have finished and each model has
-`gen1.pkl` through `gen50.pkl`; do not start feature extraction prematurely.
-
-```bash
-python run/fit_nn/krajbich2010/s2_getmaxRT.py
-sbatch run/fit_nn/krajbich2010/features_array.sbatch
-```
-
-Wait until all eight feature-extraction jobs finish; then:
-
-```bash
-sbatch run/fit_nn/krajbich2010/train_array.sbatch
-```
-
-`simulate_array.sbatch`, `features_array.sbatch` and
-`train_array.sbatch` each dispatch one independent model per array task
-so model outputs do not collide. The Slurm account and environment
-`PAS2943` / `/users/PAS2197/benson31/yes/bin/python` were inherited
-from the original pipeline; adjust them on OSC if needed. Simulator
-jobs are CPU-only; train_array requests one GPU per task. Jobs may
-require more than 24 hours; check cluster limits and job logs.
-
-For model comparison, the classifier uses the legacy `data2param`
-module, while per-model parameter estimation uses `data2param_flow`.
-The MR track uses `--for-test` switches separately on
-`compare_regen/s1_regen.py`, `compare_regen/s2_getmaxRT.py`,
-`compare_regen/s3_fe1_maxT.py` and
-`compare_regen/s4_train_classifier_maxT.py`, preserving the distinct
-`mr` output directory. `s6_decode_maxT_mr.py` decodes independent
-model-recovery test simulations.
-
-## Layout: keep production outputs parallel to food_equal
-
-- `data/krajbich2010/trial_eye.csv`: canonical converted observational input
-- `outputs/krajbich2010/tests/`: historical s0 diagnostics and s1–s5 exploratory prior tests
-- `outputs/krajbich2010/s1_gen1/`, `s3_fe1/`, `s3_fe1_maxT/`, `dpsRH1_dp0.15/`, `compare_regen/`: same top-level production layout as `food_equal`
-- `outputs/krajbich2010/s1_gen1_test/` and `s3_fe1_maxT/test/`: production model-recovery test sets, matching the food_equal layout (not the historical calibration tests)
-
-Migration from the previous layout (perform only when simulation jobs are not reading the old input): move the former s0 trial table into `data/krajbich2010/trial_eye.csv`, and move the s0 diagnostics and all standalone s1–s5 prior diagnostic folders into `outputs/krajbich2010/tests/`. No existing training or model recovery outputs should be moved. Rerun `preflight.py` after migration.
+**If old Slurm array jobs are still pending/running, finish or cancel them
+BEFORE `git pull`.** The prior added array wrappers passed CLI options
+that the source-matched scripts no longer support. No existing
+`outputs/` files have been deleted, moved, or overwritten by these GitHub
+source changes.
