@@ -228,3 +228,32 @@ subjects × 12 parameter draws × 20 trials). Inspect `candidate_ranking.csv`,
 `model_summary.csv`, `subject_summary.csv` and `s4_raw/draw_diagnostics.csv`.
 This is diagnostic only and does not change production priors, equations,
 or the unresolved fixation-versus-recorded RT observation protocol.
+
+## Step 5c — Holdout verification (27 subjects never selected in S5)
+
+The 12-subject S5 targeted screening used exactly the following IDs:
+`47 38 17 56 34 23 13 32 10 55 22 35`.
+The original trial_eye.csv contains 39 subjects, so the remaining
+**27** subjects can be used as independent input-sequence verification.
+The S4 and S5 scripts now accept `--exclude-subjects` to prevent leakage.
+
+From the repository root:
+
+```bash
+python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared trimmed_ceiling balanced_wide --exclude-subjects 47 38 17 56 34 23 13 32 10 55 22 35 --n-subjects 27 --n-draws 8 --n-trials 20 --output outputs/krajbich2010/s5_holdout_validation
+```
+
+This runs 103,680 simulator calls (8 models × 3 rectangles × 27 subjects
+× 8 parameter draws × 20 trials), and compares the *already-selected*
+three candidates without updating them. The original source RT
+maximum remains the basis for the 20%-margin simulation cutoff.
+Verify that the result's `validation_report.json` lists exactly the
+remaining 27 subjects and `candidate_ranking.csv` does not include
+any held-out subject from the previous selection.
+
+If balanced_wide fails the independent checks, the narrower
+trimmed_ceiling remains a candidate due to its lower timeout rate.
+If balanced_wide passes, this supports its *practical* prior coverage,
+not theoretical optimality. The current fixation-versus-recorded RT
+observation mismatch still prevents full model fitting without
+an explicit protocol.
