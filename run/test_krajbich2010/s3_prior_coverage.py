@@ -51,8 +51,8 @@ def make_trials(rowset):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--input', type=Path, default=ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
-    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/s3_prior_coverage')
+    ap.add_argument('--input', type=Path, default=ROOT / 'data/krajbich2010/trial_eye.csv')
+    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/tests/s3_prior_coverage')
     ap.add_argument('--models', nargs='+', choices=MODEL_NAMES, default=MODEL_NAMES,
                     help='Optional model subset for a targeted diagnostic sweep')
     ap.add_argument('--n-source-subjects', type=int, default=4)

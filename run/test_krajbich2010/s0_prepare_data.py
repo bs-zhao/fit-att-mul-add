@@ -4,7 +4,7 @@ Run from any directory:
     python run/test_krajbich2010/s0_prepare_data.py
 
 Requires data/krajbich2010/original/data_nature2010.dta.
-Outputs only to outputs/krajbich2010/s0_prepare_data/.
+Writes the canonical trial input to data/krajbich2010/trial_eye.csv.\nDiagnostic results go to outputs/krajbich2010/tests/s0_prepare_data/.
 """
 
 import argparse
@@ -16,7 +16,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT = ROOT / 'data/krajbich2010/original/data_nature2010.dta'
-DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/s0_prepare_data'
+DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/tests/s0_prepare_data'
+DEFAULT_DATA_OUTPUT = ROOT / 'data/krajbich2010/trial_eye.csv'
 REQUIRED = ('subject', 'trial', 'fix_num', 'roi', 'event_duration',
             'choice', 'leftrating', 'rightrating', 'rt')
 
@@ -28,7 +29,10 @@ def to_json_number(value):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--input', type=Path, default=DEFAULT_INPUT)
-    ap.add_argument('--output', type=Path, default=DEFAULT_OUTPUT)
+    ap.add_argument('--output', type=Path, default=DEFAULT_OUTPUT,
+                    help='Directory for diagnostic reports only')
+    ap.add_argument('--data-output', type=Path, default=DEFAULT_DATA_OUTPUT,
+                    help='Canonical converted trial table used by the fitting pipeline')
     args = ap.parse_args()
 
     if not args.input.is_file():
@@ -148,7 +152,8 @@ def main():
     }
 
     args.output.mkdir(parents=True, exist_ok=True)
-    prepared.to_csv(args.output / 'trial_eye.csv', index=False)
+    args.data_output.parent.mkdir(parents=True, exist_ok=True)
+    prepared.to_csv(args.data_output, index=False)
     diag.to_csv(args.output / 'trial_diagnostics.csv', index=False)
     subj.to_csv(args.output / 'subject_summary.csv', index=False)
     with (args.output / 'quality_report.json').open('w', encoding='utf-8') as f:
@@ -160,7 +165,8 @@ def main():
     print(f"Original RT >= 15 s: {report['original_rt_at_least_15000_ms']}; "
           f"fixation sum >= 15 s: {report['fixation_rt_at_least_15000_ms']}")
     print(f"Median (original RT - fixation sum): {report['rt_gap_median_ms']:.1f} ms")
-    print(f"Saved outputs to: {args.output}")
+    print(f"Saved trial input: {args.data_output}")
+    print(f"Saved diagnostic reports to: {args.output}")
     if report['rt_gap_abs_gt_50_ms']:
         print('WARNING: Original RT and summed fixation durations differ by >50 ms '
               f"on {report['rt_gap_abs_gt_50_ms']} trials. Inspect diagnostics before fitting.")

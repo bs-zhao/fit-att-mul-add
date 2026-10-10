@@ -2,8 +2,8 @@
 
 Run from any directory:
     python run/test_krajbich2010/s1_rt_sensitivity.py
-Inputs: outputs/krajbich2010/s0_prepare_data/trial_eye.csv
-Outputs: outputs/krajbich2010/s1_rt_sensitivity/
+Inputs: data/krajbich2010/trial_eye.csv
+Outputs: outputs/krajbich2010/tests/s1_rt_sensitivity/
 """
 
 import argparse
@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT = ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv'
-DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/s1_rt_sensitivity'
+DEFAULT_INPUT = ROOT / 'data/krajbich2010/trial_eye.csv'
+DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/tests/s1_rt_sensitivity'
 
 
 def within_subject_slopes(df, rt_col):

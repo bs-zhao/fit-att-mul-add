@@ -33,8 +33,8 @@ MODEL_NAMES = [
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--input', type=Path, default=ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
-    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/s2_prior_predictive')
+    ap.add_argument('--input', type=Path, default=ROOT / 'data/krajbich2010/trial_eye.csv')
+    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/tests/s2_prior_predictive')
     ap.add_argument('--n-subjects', type=int, default=5, help='Synthetic subjects per model (one prior draw each)')
     ap.add_argument('--n-trials', type=int, default=20, help='Real fixation sequences sampled per synthetic subject')
     ap.add_argument('--seed', type=int, default=1729)

@@ -5,7 +5,7 @@ simulation cutoff and proposed fixed-maxT length. Compares candidate d/a
 RECTANGLES with the same bounds across all four branches of each
 architecture. Tests both quick responses and no-hits, not just hit-only RT.
 
-Outputs go only to outputs/krajbich2010/s4_calibrate_shared_priors/.
+Outputs go only to outputs/krajbich2010/tests/s4_calibrate_shared_priors/.
 This diagnostic does NOT fit a model or update model_info.py.
 
 Run from repository root:
@@ -109,8 +109,8 @@ def instantiate_params(info, d, a, u_nuisance):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--input', type=Path, default=ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
-    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/s4_calibrate_shared_priors')
+    ap.add_argument('--input', type=Path, default=ROOT / 'data/krajbich2010/trial_eye.csv')
+    ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/tests/s4_calibrate_shared_priors')
     ap.add_argument('--architecture', nargs='+', choices=['DDM', 'ACC'], default=['DDM', 'ACC'])
     ap.add_argument('--candidate', nargs='+', default=['original', 's3_shared', 'wide_1', 'wide_2'])
     ap.add_argument('--candidate-config', type=Path, default=None,

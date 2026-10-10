@@ -18,7 +18,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 S4 = Path(__file__).with_name('s4_calibrate_shared_priors.py')
-DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/s5_validate_shared_priors'
+DEFAULT_OUTPUT = ROOT / 'outputs/krajbich2010/tests/s5_validate_shared_priors'
 
 
 def main():
