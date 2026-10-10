@@ -36,6 +36,7 @@ def main():
     ap.add_argument('--max-pathological-draw-fraction', type=float, default=.15)
     ap.add_argument('--min-coverage-fraction', type=float, default=.20)
     ap.add_argument('--seed', type=int, default=1729)
+    ap.add_argument('--exclude-subjects', nargs='*', type=float, default=[])
     args = ap.parse_args()
 
     if min(args.n_subjects, args.n_draws, args.n_trials) < 1:
@@ -63,6 +64,8 @@ def main():
     ]
     if args.candidate_config is not None:
         command.extend(['--candidate-config', str(args.candidate_config.resolve())])
+    if args.exclude_subjects:
+        command.extend(['--exclude-subjects', *map(str, args.exclude_subjects)])
     print('Running prior predictive simulation:', ' '.join(command), flush=True)
     subprocess.run(command, check=True)
 
