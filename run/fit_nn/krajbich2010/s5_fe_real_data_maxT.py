@@ -25,7 +25,7 @@ file_save = f"../../../outputs/krajbich2010/s3_fe{sx}_maxT/real_data/fe.pkl"
 df_save = f"../../../outputs/krajbich2010/s3_fe{sx}_maxT/real_data/df.csv"
 os.makedirs(os.path.dirname(file_save), exist_ok=True)
 
-df = load_food_data('../../../outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
+df = load_food_data('../../../data/krajbich2010/trial_eye.csv')
 all_subj = list(df['subj'].unique())
 df.to_csv(df_save, index=False)
 
