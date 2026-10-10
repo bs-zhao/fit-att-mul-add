@@ -157,3 +157,43 @@ sensitive to outliers. The diagnostic records both hit and timeout rates;
 hit-only RT medians should never be used on their own. The `ndt=0`
 observation protocol still differs from the experimental RT definition
 and must be resolved before model fitting.
+
+## Step 5 — Validate S4 candidate priors on more subjects (next run)
+
+S4's 4-subject experiment found that `wide_2` passed its initial
+**10% fast RT / 10% timeout** thresholds for all eight models; however,
+the worst DDM timeout rate was 9.03% and the worst ACC fast-RT rate
+was 6.77%. Do **not** finalize bounds using only four subjects.
+
+S5 reruns the S4 simulator on the same selected source trials within
+each candidate and model, comparing the three surviving candidates
+`s3_shared`, `wide_1`, `wide_2` using stricter screening and
+per-subject diagnostics.
+
+From repository root:
+
+```bash
+git pull --ff-only
+python run/test_krajbich2010/s5_validate_shared_priors.py --n-subjects 12 --n-draws 12 --n-trials 20
+```
+
+This makes `12 × 12 × 20 × 8 × 3 = 69,120` simulator calls. If the
+validation remains viable, run an all-subject confirmation separately
+using `--n-subjects 39` and a different `--output` directory.
+
+Outputs under `outputs/krajbich2010/s5_validate_shared_priors/`:
+
+- `candidate_ranking.csv`: worst branch on each screening criterion
+- `model_summary.csv`: fast RT, timeouts, pathological draws, and RT coverage by model
+- `subject_summary.csv`: differences between source subjects
+- `validation_report.json`: configuration and simulation cutoff
+- `s4_raw/`: unaggregated S4 results, including per-parameter-draw diagnostics
+
+The preliminary S5 thresholds are 5% fast RT (<300 ms), 10% overall
+timeouts, 15% pathological parameter draws (at least 25% timeouts
+within a draw), and 20% parameter draws with a simulated/recorded
+median RT ratio in [0.5,2] and hit rate >=90%. These are
+diagnostic screening thresholds, not scientific or publication criteria.
+The four gaze branches within each architecture share identical d/a
+bounds. The script never edits the production priors. Recorded RT and
+summed fixation-duration RT still require a consistent modeling decision.
