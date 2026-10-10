@@ -1,6 +1,3 @@
-from pathlib import Path as _Path
-import os as _os
-_os.chdir(_Path(__file__).resolve().parent)
 from data2param_flow import ParameterDecoder
 from tools.model_info import model_infos
 
@@ -15,13 +12,6 @@ model_names = [
     "aRACE_g",
 ]
 
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument('--models', nargs='+', choices=model_names, default=model_names)
-ap.add_argument('--epochs', type=int, default=20000)
-ap.add_argument('--patience', type=int, default=20)
-args = ap.parse_args()
-model_names = args.models
 feature = 'trial'
 sx = '1'
 max_trial = 20000
@@ -46,5 +36,5 @@ for model_name in model_names:
         max_trial=max_trial,
         ranges=ranges)
     my_decoder.prepare_model(post_dropout=dp)
-    my_decoder.train(args.epochs, args.patience)
+    my_decoder.train(20000, 20)
     my_decoder.save_instance()

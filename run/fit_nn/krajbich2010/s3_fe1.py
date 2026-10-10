@@ -1,6 +1,3 @@
-from pathlib import Path as _Path
-import os as _os
-_os.chdir(_Path(__file__).resolve().parent)
 import os
 import pickle
 import numpy as np
@@ -23,13 +20,7 @@ model_names = [
 dt = 0.001
 batch_size = 500
 sx = '1'
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument('--models', nargs='+', choices=model_names, default=model_names)
-ap.add_argument('--n-gen', type=int, default=50)
-args = ap.parse_args()
-model_names = args.models
-gens = [f"gen{i}" for i in range(1, args.n_gen + 1)]
+gens = [f"gen{i}" for i in range(1, 51)]
 eye2 = np.eye(2)
 
 for model_name in model_names:

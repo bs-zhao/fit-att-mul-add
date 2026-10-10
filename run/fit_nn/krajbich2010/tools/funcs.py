@@ -37,7 +37,6 @@ def _parse_array(x, dtype=int):
         return np.fromstring(s.replace(',', ' '), sep=' ', dtype=dtype)
 
 
-# Retain original RT as separate columns; 'rt' is fixation-only.
 def load_food_data(path='../../../data/krajbich2010/trial_eye.csv'):
     df = pd.read_csv(path)
     req = ['subj', 'v0', 'v1', 'response', 'arr_ml3_left', 'arr_ml3_time']
@@ -54,13 +53,7 @@ def load_food_data(path='../../../data/krajbich2010/trial_eye.csv'):
     )].copy()
     df['choice'] = df['response'].astype(int)
     df['rt_tp'] = df['arr_du'].apply(lambda x: int(np.sum(x)))
-    df['rt'] = df['rt_tp'] * 0.001  # Scheme A: summed fixation duration
-    if 'rt_original_ms' in df.columns:
-        df['rt_original_s'] = df['rt_original_ms'] * 0.001
-    if 'rt_fixations_ms' in df.columns:
-        check = df['rt_tp'].to_numpy() == df['rt_fixations_ms'].to_numpy()
-        if not check.all():
-            raise ValueError('Fixation sums differ from s0 preprocessing output')
+    df['rt'] = df['rt_tp'] * 0.001
     return df
 
 

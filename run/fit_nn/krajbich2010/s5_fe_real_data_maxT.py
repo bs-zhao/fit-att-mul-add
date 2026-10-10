@@ -1,6 +1,3 @@
-from pathlib import Path as _Path
-import os as _os
-_os.chdir(_Path(__file__).resolve().parent)
 import os
 import pickle
 

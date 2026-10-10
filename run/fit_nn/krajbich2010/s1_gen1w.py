@@ -1,6 +1,3 @@
-from pathlib import Path as _Path
-import os as _os
-_os.chdir(_Path(__file__).resolve().parent)
 # Binary food-choice version of adm-sbi/G19_v3/nn_rv1/s1_gen1w.py
 
 import os
@@ -12,10 +9,9 @@ from tqdm import tqdm
 from c_bifood import sim_trial_aDDM, sim_trial_aRACE
 from tools.model_info import model_infos
 from tools.funcs import load_food_data, make_params
-from tools.maxT import MAX_LEN_RT
 
 dt = 0.001
-max_rt = MAX_LEN_RT / 1000.0
+max_rt = 28.287
 
 model_names = [
     "aDDM_1",
@@ -28,19 +24,9 @@ model_names = [
     "aRACE_g",
 ]
 
-import argparse
-ap = argparse.ArgumentParser()
-ap.add_argument('--models', nargs='+', choices=model_names, default=model_names)
-ap.add_argument('--n-round', type=int, default=500)
-ap.add_argument('--n-gen', type=int, default=50)
-ap.add_argument('--for-test', action='store_true')
-args = ap.parse_args()
-if args.n_round < 1 or args.n_gen < 1:
-    ap.error('n-round and n-gen must be positive')
-model_names = args.models
-for_test = int(args.for_test)
-n_round = args.n_round
-names = [f"gen{i}" for i in range(1, args.n_gen + 1)]
+for_test = 0
+n_round = 500
+names = [f"gen{i}" for i in range(1, 51)]
 
 for model_name in model_names:
     N_GEN = len(names)

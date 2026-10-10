@@ -1,4 +1,3 @@
-# Holdout-validated balanced_wide shared prior, kept separate from food_equal.
 model_infos = {
     "aDDM_1": {"disp_mname":"DDM-NoAtt","mul_model":1,"free_pnames":["d","a"],"free_pnames_ml":["d","a"],"free_pranges":[(0.06,2.8),(2.3,10.5)],"free_pranges_ml":[(0.06,2.8),(2.3,10.5)],"fixed_pnames":["theta","lam","s","ndt","gamma","var_v","b0_cslope","d_cslope","std_cslope","ov_cslope"],"fixed_pvalues":[1,-1,1,0,0,0,0,0,0,0],"pnames_disp":["d","a"]},
     "aDDM_2": {"disp_mname":"DDM-AttOnly","mul_model":1,"free_pnames":["d","a"],"free_pnames_ml":["d","a"],"free_pranges":[(0.06,2.8),(2.3,10.5)],"free_pranges_ml":[(0.06,2.8),(2.3,10.5)],"fixed_pnames":["theta","lam","s","ndt","gamma","var_v","b0_cslope","d_cslope","std_cslope","ov_cslope"],"fixed_pvalues":[0,-1,1,0,0,0,0,0,0,0],"pnames_disp":["d","a"]},
