@@ -113,3 +113,47 @@ and against **fixation-summed RT**, choice agreement, and coverage across subjec
 longer than the sum of option-fixation durations; fitting to original RT with
 the current `ndt=0` model could attribute unobserved inter-fixation time to
 decision accumulation. Keep that observation-model limitation explicit.
+
+## Step 4 — Wide shared prior calibration (current preferred next step)
+
+All four DDM variants **share the exact same d and a prior rectangle**; all
+four ACC variants also share the exact same d and a rectangle. DDM and ACC
+can differ from each other due to their different architectures. The test
+compares original, common S3-scaled and two broader candidate rectangles.
+It does not modify `tools/model_info.py` or any other production file.
+
+Simulation cutoff is **ceil(max original RT in ms × (1 + margin))**, with
+a default 20% margin. The current raw Krajbich 2010 maximum is **23,572 ms**,
+giving **28,287 ms**, or 28.287 s, at a 20% margin. This replaces the
+hard-coded 14.5 s cutoff **for this diagnostic only** and is also the
+candidate `MAX_LEN_RT` for a future Krajbich-specific training pipeline.
+The original food_equal 15 s setting remains unchanged.
+
+Initial test:
+
+```bash
+python run/test_krajbich2010/s4_calibrate_shared_priors.py --n-subjects 4 --n-draws 12 --n-trials 12 --rt-margin 0.20
+```
+
+All outputs remain in
+`outputs/krajbich2010/s4_calibrate_shared_priors/`, including
+`candidate_ranking.csv`, `model_candidate_summary.csv`,
+`draw_diagnostics.csv`, and `calibration_report.json`.
+
+The screening requires, *for every gaze branch within an architecture*:
+(1) no more than 10% trials faster than 300 ms, (2) no more than 10%
+simulation timeouts, and (3) at least 5% of parameter draws with a
+hit rate ≥ 0.90 and a simulated/recorded median RT ratio between 0.5
+and 2.0. These are **initial diagnostic thresholds, not inferential criteria**.
+Among candidates passing the thresholds, the script sorts by d×a rectangle
+area, preferring broader coverage. Because candidates are finite, it does
+not claim to find globally optimal limits. Inspect candidate-level results
+before picking bounds, and increase sampling for validation.
+
+**Important limitations:** A very wide rectangular uniform prior can put
+substantial probability mass on unrealistic combinations even when the
+marginal parameter ranges are individually plausible. A maximum RT is
+sensitive to outliers. The diagnostic records both hit and timeout rates;
+hit-only RT medians should never be used on their own. The `ndt=0`
+observation protocol still differs from the experimental RT definition
+and must be resolved before model fitting.
