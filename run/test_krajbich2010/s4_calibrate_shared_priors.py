@@ -51,7 +51,7 @@ CANDIDATES = {
 }
 
 
-def load_source(path, seed, n_subjects, n_trials, max_time_ms):
+def load_source(path, seed, n_subjects, n_trials, max_time_ms, exclude_subjects=()):
     df = pd.read_csv(path)
     required = ['subj', 'trial', 'v0', 'v1', 'response',
                 'arr_ml3_left', 'arr_ml3_time', 'rt_original_ms', 'rt_fixations_ms']
@@ -61,7 +61,10 @@ def load_source(path, seed, n_subjects, n_trials, max_time_ms):
     rng = np.random.default_rng(seed)
     datasets = []
     eligible = []
+    excluded = set(map(float, exclude_subjects))
     for subj, sub in df.groupby('subj', sort=False):
+        if float(subj) in excluded:
+            continue
         sub = sub.loc[(sub.rt_original_ms < max_time_ms) &
                       (sub.rt_fixations_ms < max_time_ms)].copy()
         if len(sub) >= n_trials:
@@ -122,6 +125,8 @@ def main():
     ap.add_argument('--n-draws', type=int, default=12)
     ap.add_argument('--n-trials', type=int, default=12)
     ap.add_argument('--seed', type=int, default=1729)
+    ap.add_argument('--exclude-subjects', nargs='*', type=float, default=[],
+                    help='Source subject IDs held out of this run')
     args = ap.parse_args()
 
     # Extend the diagnostic candidate catalog without modifying production priors.
@@ -172,7 +177,8 @@ def main():
     max_time_ms = math.ceil(max_observed_rt_ms * (1.0 + args.rt_margin))
     max_time_s = max_time_ms / 1000.0
 
-    df, datasets = load_source(args.input, args.seed, args.n_subjects, args.n_trials, max_time_ms)
+    df, datasets = load_source(args.input, args.seed, args.n_subjects, args.n_trials,
+                               max_time_ms, exclude_subjects=args.exclude_subjects)
     rng = np.random.default_rng(args.seed + 11)
     uniforms_da = rng.random((args.n_subjects, args.n_draws, 2))
     uniforms_nuisance = rng.random((args.n_subjects, args.n_draws, 2))
@@ -266,6 +272,7 @@ def main():
     report = {
         'observed_max_recorded_rt_ms': max_observed_rt_ms,
         'rt_margin': args.rt_margin,
+        'excluded_source_subjects': args.exclude_subjects,
         'max_simulation_time_ms': max_time_ms,
         'max_simulation_time_s': max_time_s,
         'proposed_MAX_LEN_RT_ms': max_time_ms,
