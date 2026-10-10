@@ -1,5 +1,8 @@
 import pickle
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 model_names = [
     "aDDM_1",
@@ -33,3 +36,25 @@ for model_name in model_names:
         f.write(f"{max_len_rt}\n")
     with open(f"../../../outputs/krajbich2010/s2_max_len{sx}_nf_{model_name}.txt", 'w') as f:
         f.write(f"{max_len_nf}\n")
+
+    plt.figure(figsize=(8, 5))
+    plt.hist(rts, bins=60)
+    plt.axvline(max_len_rt * 0.001, linestyle='--', label='max_len_rt')
+    plt.xlabel('RT (s)')
+    plt.ylabel('Count')
+    plt.title(f'{model_name}: RT')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'../../../outputs/krajbich2010/s2_hist_rt_{model_name}.png', dpi=150)
+    plt.close()
+
+    plt.figure(figsize=(8, 5))
+    plt.hist(nfs, bins=60)
+    plt.axvline(max_len_nf, linestyle='--', label='max_len_nf')
+    plt.xlabel('Number of fixations')
+    plt.ylabel('Count')
+    plt.title(f'{model_name}: Fixation count')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'../../../outputs/krajbich2010/s2_hist_nf_{model_name}.png', dpi=150)
+    plt.close()
