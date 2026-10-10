@@ -6,7 +6,7 @@ root; each entry script sets its own working directory.
 
 ## Input and RT protocol
 
-Prepare `outputs/krajbich2010/s0_prepare_data/trial_eye.csv` from
+Prepare `data/krajbich2010/trial_eye.csv` from
 `data/krajbich2010/original/data_nature2010.dta` using
 `python run/test_krajbich2010/s0_prepare_data.py`.
 
@@ -75,7 +75,7 @@ all eight models. For MR, generate `s1_gen1w.py --for-test` and
 regenerated `--for-test` data, and decode with `s6_decode_maxT_mr.py`.
 Detailed MR switches are documented inside the compare_regen scripts.
 
-All outputs: `outputs/krajbich2010/`. No existing `food_equal`
+All production outputs: `outputs/krajbich2010/`. The prior-predictive and calibration test artifacts live exclusively under `outputs/krajbich2010/tests/`. No existing `food_equal`
 training files or models are touched.
 
 ## Before any full run: preflight
@@ -131,3 +131,12 @@ The MR track uses `--for-test` switches separately on
 `compare_regen/s4_train_classifier_maxT.py`, preserving the distinct
 `mr` output directory. `s6_decode_maxT_mr.py` decodes independent
 model-recovery test simulations.
+
+## Layout: keep production outputs parallel to food_equal
+
+- `data/krajbich2010/trial_eye.csv`: canonical converted observational input
+- `outputs/krajbich2010/tests/`: historical s0 diagnostics and s1–s5 exploratory prior tests
+- `outputs/krajbich2010/s1_gen1/`, `s3_fe1/`, `s3_fe1_maxT/`, `dpsRH1_dp0.15/`, `compare_regen/`: same top-level production layout as `food_equal`
+- `outputs/krajbich2010/s1_gen1_test/` and `s3_fe1_maxT/test/`: production model-recovery test sets, matching the food_equal layout (not the historical calibration tests)
+
+Migration from the previous layout (perform only when simulation jobs are not reading the old input): move the former s0 trial table into `data/krajbich2010/trial_eye.csv`, and move the s0 diagnostics and all standalone s1–s5 prior diagnostic folders into `outputs/krajbich2010/tests/`. No existing training or model recovery outputs should be moved. Rerun `preflight.py` after migration.
