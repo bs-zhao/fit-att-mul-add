@@ -257,3 +257,30 @@ If balanced_wide passes, this supports its *practical* prior coverage,
 not theoretical optimality. The current fixation-versus-recorded RT
 observation mismatch still prevents full model fitting without
 an explicit protocol.
+
+## Final S5 holdout result and proposed priors
+
+The independent 27-subject validation (103,680 simulations) showed
+`balanced_wide` passed all provisional screening requirements in **both**
+DDM and ACC. No development-stage subjects reappeared in the holdout.
+
+| Architecture | Shared drift `d` | Shared boundary `a` | Holdout worst-branch fast rate | Timeout rate |
+|---|---|---|---|---|
+| DDM | [0.06, 2.80] | [2.30, 10.50] | 3.66% | 8.19% |
+| ACC | [0.035, 2.30] | [2.00, 14.50] | 4.68% | 5.44% |
+
+The `trimmed_ceiling` ACC proposal failed the holdout fast-RT screen
+(5.86% > 5% threshold). Results and the precise candidate are recorded in
+`validated_prior_candidate.json`. This **records a validated candidate**,
+not a production override: `run/fit_nn/food_equal/` is unchanged.
+
+**Remaining gate before copying the production pipeline:** the original
+experiment records a response time that exceeds the sum of recorded option
+fixation durations (about 355 ms on average). The existing
+`load_food_data()` discards recorded RT and uses summed durations,
+whereas the Cython simulator returns elapsed accumulation time with
+`ndt=0`. The new pipeline must explicitly choose an observation
+protocol to avoid training on simulated RT while evaluating a different
+time quantity. The 28.287 s proposed maxT is based on the **recorded**
+maximum with 20% margin and should be reconsidered if the modeled
+observable is instead fixation-only RT.
