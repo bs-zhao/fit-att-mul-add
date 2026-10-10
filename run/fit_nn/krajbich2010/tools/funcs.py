@@ -38,7 +38,7 @@ def _parse_array(x, dtype=int):
 
 
 # Retain original RT as separate columns; 'rt' is fixation-only.
-def load_food_data(path='../../../outputs/krajbich2010/s0_prepare_data/trial_eye.csv'):
+def load_food_data(path='../../../data/krajbich2010/trial_eye.csv'):
     df = pd.read_csv(path)
     req = ['subj', 'v0', 'v1', 'response', 'arr_ml3_left', 'arr_ml3_time']
     miss = [x for x in req if x not in df.columns]
