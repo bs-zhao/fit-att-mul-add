@@ -66,3 +66,15 @@ Files under `outputs/krajbich2010/s2_prior_predictive/`:
 - `prior_predictive_report.json`: machine-readable summaries and limitations
 
 **Warnings:** Prior predictive simulation is not model fitting or evidence of a best model. libc's random-number state inside the Cython simulation is not fully controlled by the NumPy seed. The simulator's `extend_last=500000` may mutate arrays, so the test passes copies. Source trial RT is separate from fixation time. Do not run full SBI until the RT protocol and prior-predictive fit are reviewed.
+
+## Step 3 — Matched-trial prior coverage and parameter scaling
+
+After prior predictive smoke test:
+
+```bash
+python run/test_krajbich2010/s3_prior_coverage.py --n-source-subjects 4 --n-draws 8 --n-trials 24
+```
+
+Produces `outputs/krajbich2010/s3_prior_coverage/coverage_summary.csv`, `parameter_draws.csv`, and `coverage_report.json`. Uses identical selected empirical trials across all eight model families, samples model-specific prior parameters, and explores diagnostic `d` multipliers 1, 0.5, 0.25 and boundary `a` multipliers 1, 2. Each baseline configuration is preserved. All simulator invocations use the existing c_bifood package; no equations are modified. Values outside original priors are exploratory and **must not be silently used for SBI training**.
+
+**Evaluation**: compare hit rate, simulated RT median, 25%-window coverage of recorded versus fixation-summed RT, and conditional choice agreement. No model inference should be drawn from this test. RT discrepancies remain unresolved; do not commence full SBI until the evidence supports a consistent observation protocol.
