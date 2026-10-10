@@ -27,8 +27,8 @@ def main():
     ap.add_argument('--n-subjects', type=int, default=12, help='Set 39 for all subjects')
     ap.add_argument('--n-draws', type=int, default=12, help='Parameter draws per model and subject')
     ap.add_argument('--n-trials', type=int, default=20)
-    ap.add_argument('--candidate', nargs='+', choices=['s3_shared', 'wide_1', 'wide_2'],
-                    default=['s3_shared', 'wide_1', 'wide_2'])
+    ap.add_argument('--candidate', nargs='+', default=['s3_shared', 'wide_1', 'wide_2'])
+    ap.add_argument('--candidate-config', type=Path, default=None)
     ap.add_argument('--rt-margin', type=float, default=.20)
     ap.add_argument('--fast-rt-ms', type=float, default=300.)
     ap.add_argument('--max-fast-fraction', type=float, default=.05)
@@ -61,6 +61,8 @@ def main():
         '--fast-rt-ms', str(args.fast_rt_ms),
         '--seed', str(args.seed),
     ]
+    if args.candidate_config is not None:
+        command.extend(['--candidate-config', str(args.candidate_config.resolve())])
     print('Running prior predictive simulation:', ' '.join(command), flush=True)
     subprocess.run(command, check=True)
 
