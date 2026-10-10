@@ -109,8 +109,9 @@ def main():
     ap.add_argument('--input', type=Path, default=ROOT / 'outputs/krajbich2010/s0_prepare_data/trial_eye.csv')
     ap.add_argument('--output', type=Path, default=ROOT / 'outputs/krajbich2010/s4_calibrate_shared_priors')
     ap.add_argument('--architecture', nargs='+', choices=['DDM', 'ACC'], default=['DDM', 'ACC'])
-    ap.add_argument('--candidate', nargs='+', choices=['original', 's3_shared', 'wide_1', 'wide_2'],
-                    default=['original', 's3_shared', 'wide_1', 'wide_2'])
+    ap.add_argument('--candidate', nargs='+', default=['original', 's3_shared', 'wide_1', 'wide_2'])
+    ap.add_argument('--candidate-config', type=Path, default=None,
+                    help='Optional JSON with extra DDM/ACC candidate d/a rectangles')
     ap.add_argument('--rt-margin', type=float, default=0.20,
                     help='Simulation time limit = ceil(max observed recorded RT in ms * (1+margin))')
     ap.add_argument('--fast-rt-ms', type=float, default=300.)
@@ -122,6 +123,34 @@ def main():
     ap.add_argument('--n-trials', type=int, default=12)
     ap.add_argument('--seed', type=int, default=1729)
     args = ap.parse_args()
+
+    # Extend the diagnostic candidate catalog without modifying production priors.
+    catalog = {arch: dict(items) for arch, items in CANDIDATES.items()}
+    if args.candidate_config is not None:
+        custom = json.loads(args.candidate_config.read_text(encoding='utf-8'))
+        if not isinstance(custom, dict):
+            ap.error('candidate-config must be a JSON object')
+        for arch, items in custom.items():
+            if arch not in catalog or not isinstance(items, dict):
+                ap.error(f'Invalid candidate-config architecture: {arch}')
+            for name, bounds in items.items():
+                if not isinstance(bounds, dict) or set(bounds) != {'d', 'a'}:
+                    ap.error(f'Invalid candidate bounds: {arch}/{name}')
+                cleaned = {}
+                for parameter in ('d', 'a'):
+                    limits = bounds[parameter]
+                    if (not isinstance(limits, list) or len(limits) != 2 or
+                            not all(isinstance(v, (int, float)) and math.isfinite(v) for v in limits) or
+                            limits[0] <= 0 or limits[0] >= limits[1]):
+                        ap.error(f'Invalid {parameter} prior interval: {arch}/{name}')
+                    cleaned[parameter] = [float(v) for v in limits]
+                if name in catalog[arch]:
+                    ap.error(f'Candidate name already exists: {arch}/{name}')
+                catalog[arch][name] = cleaned
+    for arch in args.architecture:
+        unknown = [name for name in args.candidate if name not in catalog[arch]]
+        if unknown:
+            ap.error(f'Unknown candidates for {arch}: {unknown}')
 
     if not args.input.exists():
         raise FileNotFoundError(f'Run s0_prepare_data.py first; missing {args.input}')
@@ -151,7 +180,7 @@ def main():
     for arch in args.architecture:
         sim = sim_trial_aDDM if arch == 'DDM' else sim_trial_aRACE
         for cand in args.candidate:
-            bounds = CANDIDATES[arch][cand]
+            bounds = catalog[arch][cand]
             for model in MODEL_GROUPS[arch]:
                 info = model_infos[model]
                 for subject_ix, (subj, trials) in enumerate(datasets):
@@ -199,7 +228,7 @@ def main():
     draws = pd.DataFrame(results)
     aggregate = []
     for (arch, candidate, model), group in draws.groupby(['architecture', 'candidate', 'model'], sort=False):
-        bounds = CANDIDATES[arch][candidate]
+        bounds = catalog[arch][candidate]
         n = int(group.n_sim.sum())
         aggregate.append({
             'architecture': arch, 'candidate': candidate, 'model': model,
@@ -253,7 +282,8 @@ def main():
             'min_fraction_draws_covered': args.min_coverage_fraction,
             'covered_draw_definition': 'hit_rate>=0.90 and simulated/recorded RT median ratio in [0.5,2.0]',
         },
-        'candidates': {arch: CANDIDATES[arch] for arch in args.architecture},
+        'candidates': {arch: {cand: catalog[arch][cand] for cand in args.candidate}
+                       for arch in args.architecture},
         'important': [
             'Only shared within-architecture d/a ranges; identical across all four gaze branches.',
             'Theta and gamma retain the original branch-specific ranges where freely estimated.',
