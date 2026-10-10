@@ -16,6 +16,10 @@ data/krajbich2010/original/data_nature2010.dta
 data/krajbich2010/original/data_nature2010_codebook.md
 ```
 
+## Output isolation
+
+`outputs/krajbich2010/tests/` contains only the exploratory validation and prior-calibration outputs. Its contents are not used by the formal fitting scripts, which read `data/krajbich2010/trial_eye.csv` and save model outputs directly under `outputs/krajbich2010/`.
+
 ## First step
 
 From repository root:
@@ -24,9 +28,7 @@ From repository root:
 python run/test_krajbich2010/s0_prepare_data.py
 ```
 
-Only produces outputs in `outputs/krajbich2010/s0_prepare_data/`:
-
-- `trial_eye.csv` — trial-level data with the same key fields expected by the existing binary food-choice loader
+Creates canonical `data/krajbich2010/trial_eye.csv` (the input for the formal SBI pipeline). Diagnostic outputs are saved in `outputs/krajbich2010/tests/s0_prepare_data/`:
 - `trial_diagnostics.csv` — each trial's raw recorded RT, sum of fixation durations, and their difference
 - `subject_summary.csv` — subject-level QA
 - `quality_report.json` — aggregate counts, value range, cutoff counts and encoding conventions
@@ -41,7 +43,7 @@ The current `food_equal/tools/funcs.py` loader sets RT equal to the **sum of fix
 python run/test_krajbich2010/s1_rt_sensitivity.py
 ```
 
-Files under `outputs/krajbich2010/s1_rt_sensitivity/`:
+Files under `outputs/krajbich2010/tests/s1_rt_sensitivity/`:
 
 - `rt_report.json`: mean gaps, per-RT-definition exclusion counts and value effects
 - `trial_rt_comparison.csv`: side-by-side trial results
@@ -59,7 +61,7 @@ Run this after Step 0 and Step 1:
 python run/test_krajbich2010/s2_prior_predictive.py --n-subjects 5 --n-trials 20
 ```
 
-Files under `outputs/krajbich2010/s2_prior_predictive/`:
+Files under `outputs/krajbich2010/tests/s2_prior_predictive/`:
 
 - `model_summary.csv`: hit rates, simulated RT median/P95, observed RT medians
 - `simulated_trials.csv`: simulated choice, hit, and RT for each sampled trial
@@ -75,7 +77,7 @@ After prior predictive smoke test:
 python run/test_krajbich2010/s3_prior_coverage.py --n-source-subjects 4 --n-draws 8 --n-trials 24
 ```
 
-Produces `outputs/krajbich2010/s3_prior_coverage/coverage_summary.csv`, `parameter_draws.csv`, and `coverage_report.json`. Uses identical selected empirical trials across all eight model families, samples model-specific prior parameters, and explores diagnostic `d` multipliers 1, 0.5, 0.25 and boundary `a` multipliers 1, 2. Each baseline configuration is preserved. All simulator invocations use the existing c_bifood package; no equations are modified. Values outside original priors are exploratory and **must not be silently used for SBI training**.
+Produces `outputs/krajbich2010/tests/s3_prior_coverage/coverage_summary.csv`, `parameter_draws.csv`, and `coverage_report.json`. Uses identical selected empirical trials across all eight model families, samples model-specific prior parameters, and explores diagnostic `d` multipliers 1, 0.5, 0.25 and boundary `a` multipliers 1, 2. Each baseline configuration is preserved. All simulator invocations use the existing c_bifood package; no equations are modified. Values outside original priors are exploratory and **must not be silently used for SBI training**.
 
 **Evaluation**: compare hit rate, simulated RT median, 25%-window coverage of recorded versus fixation-summed RT, and conditional choice agreement. No model inference should be drawn from this test. RT discrepancies remain unresolved; do not commence full SBI until the evidence supports a consistent observation protocol.
 
@@ -84,7 +86,7 @@ Produces `outputs/krajbich2010/s3_prior_coverage/coverage_summary.csv`, `paramet
 The original 36,864-simulation diagnostic yielded very short ACC RT under the original d/a priors. To avoid repeating DDM tests, s3 now accepts `--models` to select just accumulator models. Test smaller d and larger a without changing the fitted model equations or prior definitions:
 
 ```bash
-python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 4 --n-draws 12 --n-trials 24 --d-scales 0.25 0.125 0.0625 --a-scales 2 3 4 --output outputs/krajbich2010/s3_prior_coverage_acc_extended
+python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 4 --n-draws 12 --n-trials 24 --d-scales 0.25 0.125 0.0625 --a-scales 2 3 4 --output outputs/krajbich2010/tests/s3_prior_coverage_acc_extended
 ```
 
 Review `coverage_summary.csv` and `parameter_draws.csv` for RT match, hit rate and choice consistency. These diagnostic multipliers do not change the official SBI priors. Very slow/no-hit trials are censored by `max_rt=14.5`, so never use hit-only RT alone as sufficient evidence of coverage.
@@ -99,8 +101,8 @@ For DDM, the previous diagnostic suggested a common `d×0.5, a×2` setting.
 Run both commands from the project root:
 
 ```bash
-python run/test_krajbich2010/s3_prior_coverage.py --models aDDM_1 aDDM_2 aDDM_t aDDM_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.5 --a-scales 2 --output outputs/krajbich2010/s3_prior_coverage_ddm_validation
-python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.25 --a-scales 3 --output outputs/krajbich2010/s3_prior_coverage_acc_validation
+python run/test_krajbich2010/s3_prior_coverage.py --models aDDM_1 aDDM_2 aDDM_t aDDM_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.5 --a-scales 2 --output outputs/krajbich2010/tests/s3_prior_coverage_ddm_validation
+python run/test_krajbich2010/s3_prior_coverage.py --models aRACE_1 aRACE_2 aRACE_t aRACE_g --n-source-subjects 12 --n-draws 16 --n-trials 40 --d-scales 0.25 --a-scales 3 --output outputs/krajbich2010/tests/s3_prior_coverage_acc_validation
 ```
 
 Each run has `4 × 12 × 16 × 40 = 30,720` simulation calls (61,440 total).
@@ -136,7 +138,7 @@ python run/test_krajbich2010/s4_calibrate_shared_priors.py --n-subjects 4 --n-dr
 ```
 
 All outputs remain in
-`outputs/krajbich2010/s4_calibrate_shared_priors/`, including
+`outputs/krajbich2010/tests/s4_calibrate_shared_priors/`, including
 `candidate_ranking.csv`, `model_candidate_summary.csv`,
 `draw_diagnostics.csv`, and `calibration_report.json`.
 
@@ -181,7 +183,7 @@ This makes `12 × 12 × 20 × 8 × 3 = 69,120` simulator calls. If the
 validation remains viable, run an all-subject confirmation separately
 using `--n-subjects 39` and a different `--output` directory.
 
-Outputs under `outputs/krajbich2010/s5_validate_shared_priors/`:
+Outputs under `outputs/krajbich2010/tests/s5_validate_shared_priors/`:
 
 - `candidate_ranking.csv`: worst branch on each screening criterion
 - `model_summary.csv`: fast RT, timeouts, pathological draws, and RT coverage by model
@@ -220,7 +222,7 @@ Run:
 
 ```bash
 git pull --ff-only
-python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared raised_floor trimmed_ceiling balanced_wide --n-subjects 12 --n-draws 12 --n-trials 20 --output outputs/krajbich2010/s5_targeted_rectangles
+python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared raised_floor trimmed_ceiling balanced_wide --n-subjects 12 --n-draws 12 --n-trials 20 --output outputs/krajbich2010/tests/s5_targeted_rectangles
 ```
 
 This runs 92,160 simulator calls (8 models × 4 candidate rectangles × 12
@@ -240,7 +242,7 @@ The S4 and S5 scripts now accept `--exclude-subjects` to prevent leakage.
 From the repository root:
 
 ```bash
-python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared trimmed_ceiling balanced_wide --exclude-subjects 47 38 17 56 34 23 13 32 10 55 22 35 --n-subjects 27 --n-draws 8 --n-trials 20 --output outputs/krajbich2010/s5_holdout_validation
+python run/test_krajbich2010/s5_validate_shared_priors.py --candidate-config run/test_krajbich2010/s5_candidate_rectangles.json --candidate s3_shared trimmed_ceiling balanced_wide --exclude-subjects 47 38 17 56 34 23 13 32 10 55 22 35 --n-subjects 27 --n-draws 8 --n-trials 20 --output outputs/krajbich2010/tests/s5_holdout_validation
 ```
 
 This runs 103,680 simulator calls (8 models × 3 rectangles × 27 subjects
