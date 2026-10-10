@@ -23,6 +23,13 @@ model_names = [
     "aRACE_g",
 ]
 
+model_names = [
+    "aRACE_1",
+    "aRACE_2",
+    "aRACE_t",
+    "aRACE_g",
+]
+
 dt = 0.001
 max_rt = 14.5
 feature = 'trial'

@@ -15,7 +15,7 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-]
+][-2:-1]
 
 dt = 0.001
 batch_size = 500

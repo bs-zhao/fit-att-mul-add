@@ -10,7 +10,7 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-]
+][-2:]
 
 real_max_tp = 28287
 real_max_nf = 128

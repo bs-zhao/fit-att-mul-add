@@ -7,13 +7,15 @@ from data2param import load_instance
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
+
+
 model_names = [
-    "aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g",
     "aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g",
 ]
 
 model_names = [
     "aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g",
+    "aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g",
 ]
 
 feature_d = 'trial'
