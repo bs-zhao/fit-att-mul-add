@@ -4,6 +4,7 @@ import os
 import pickle
 import random
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from c_bifood import sim_trial_aDDM, sim_trial_aRACE
@@ -45,6 +46,7 @@ for model_name in model_names:
     for GEN in names:
         print(f"{model_name}: {GEN}/{N_GEN}")
         gen_rlt = []
+        test_rows = [] if for_test == 1 else None
 
         for rd in tqdm(range(n_round)):
             subj = random.choice(all_subj)
@@ -97,7 +99,39 @@ for model_name in model_names:
             gen_rlt.append(dic_sub)
             rt_all += rt_list
 
+            if for_test == 1:
+                # Each accepted synthetic subject has one parameter draw.
+                synthetic_id = len(gen_rlt)
+                for j in range(len(choice_list)):
+                    pos = np.asarray(arr_pos_list[j], dtype=np.int64)
+                    du = np.asarray(arr_du_list[j], dtype=np.int64)
+                    row = {
+                        'Subject': synthetic_id,
+                        'subj': subj,
+                        'v0': float(vs_list[j][0]),  # right option
+                        'v1': float(vs_list[j][1]),  # left option
+                        'rt': float(rt_list[j]),
+                        'choice': int(choice_list[j]),
+                        'arr_pos': pos.tolist(),
+                        'arr_du': du.tolist(),
+                        'T0_ms': int(du[pos == 0].sum()),
+                        'T1_ms': int(du[pos == 1].sum()),
+                        'nf': int(nf_list[j]),
+                    }
+                    for p in model_info['free_pnames']:
+                        row[p] = float(params[p])
+                    test_rows.append(row)
+
         save_path = f"{dir_save}/{GEN}.pkl"
         with open(save_path, 'wb') as f:
             pickle.dump(gen_rlt, f, protocol=4)
         print(f"Successfully saved {save_path}")
+
+        if for_test == 1:
+            columns = ['Subject', 'subj', 'v0', 'v1', 'rt', 'choice', 'arr_pos', 'arr_du', 'T0_ms', 'T1_ms', 'nf'] + list(model_info['free_pnames'])
+            df_test = pd.DataFrame(test_rows, columns=columns)
+            df_test.to_csv(f"{dir_save}/{GEN}.csv", index=False)
+            df_test.drop_duplicates(subset=['Subject'], keep='first').to_csv(
+                f"{dir_save}/param.csv", index=False
+            )
+            print(f"saved {dir_save}/{GEN}.csv and {dir_save}/param.csv")
