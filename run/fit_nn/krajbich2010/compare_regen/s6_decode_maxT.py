@@ -17,6 +17,11 @@ model_names = [
     "aRACE_g",
 ]
 
+model_names = [
+    "aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g",
+]
+
+
 
 feature_d = 'trial'
 feature = 'trial'

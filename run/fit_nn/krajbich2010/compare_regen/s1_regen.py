@@ -24,8 +24,8 @@ model_names = [
 ]
 
 model_names = [
-    "aRACE_t",
-    "aRACE_g",
+    "aRACE_1",
+    "aRACE_2",
 ]
 
 dt = 0.001
