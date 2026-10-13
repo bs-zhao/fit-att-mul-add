@@ -16,14 +16,14 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-][2:4]
+][:]
 
 dt = 0.001
 batch_size = 500
 sx = '1'
 gens = [f"gen{i}" for i in range(1, 51)]
 eye2 = np.eye(2)
-for_test = 0
+for_test = 1
 
 for model_name in model_names:
     dir_gen = f"../../../outputs/krajbich2010/s1_gen{sx}/{model_name}/"

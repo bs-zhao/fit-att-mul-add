@@ -23,9 +23,9 @@ model_names = [
     "aRACE_2",
     "aRACE_t",
     "aRACE_g",
-][2:4]
+][:]
 
-for_test = 0
+for_test = 1
 n_round = 500
 names = [f"gen{i}" for i in range(1, 51)]
 
