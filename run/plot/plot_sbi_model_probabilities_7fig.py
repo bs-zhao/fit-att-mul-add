@@ -191,7 +191,7 @@ def metric_values(
     n, num_models = logits.shape
     if metric in PAIRWISE_METRICS:
         by_family = [
-            family for family in ("aDDM", "aRACE")
+            family for family in ("aRACE", "aDDM")
             if f"{family}_t" in models and f"{family}_g" in models
         ]
         chosen_models: list[str] = []
@@ -261,6 +261,16 @@ def draw_panel(
         return
 
     selected_models, values = metric_values(logits, models, metric)
+    if family is None:
+        # In the joint comparison, DISPLAY ACC on the left and DDM on the
+        # right without changing the CSV filename, source-column order,
+        # full-set softmax, or winner calculations.
+        order = sorted(
+            range(len(selected_models)),
+            key=lambda i: (not selected_models[i].startswith("aRACE_"), i),
+        )
+        selected_models = tuple(selected_models[i] for i in order)
+        values = values[order]
     n = len(logits)
     print(
         f"[OK] {csv_file} | metric={metric} | n={n} | "
@@ -320,14 +330,14 @@ def draw_panel(
         fontsize=9, color="#5C6673",
     )
 
-    # Figure 6/7: separate DDM and ACC within either the full eight bars
+    # Figure 6/7: separate ACC (left) and DDM (right) within either the full eight bars
     # or the four bars for the pairwise-only metrics.
     if family is None and len(selected_models) in (4, 8):
         split = 1.5 if len(selected_models) == 4 else 3.5
         left = 0.5 if len(selected_models) == 4 else 1.5
         right = 2.5 if len(selected_models) == 4 else 5.5
         ax.axvline(split, color="#AAB1BC", ls="--", lw=1)
-        for pos, text_label in ((left, "DDM"), (right, "ACC")):
+        for pos, text_label in ((left, "ACC"), (right, "DDM")):
             ax.text(
                 pos, 1.025, text_label, ha="center",
                 transform=ax.get_xaxis_transform(),
