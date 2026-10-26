@@ -12,8 +12,8 @@ Source real figures: outputs/plots/sbi_9fig_<pipeline>/mean_prob/
 Source simulated CSVs: outputs/<dataset>/<pipeline>/test/trial/s6_decode_trial/aRACE_g/
 Default outputs: outputs/plots/mean_prob_paper_figs/<pipeline>/
 
-This script NEVER trains or runs a decoder. Missing inputs cause an error
-before any output is written, rather than silently saving blank panels.
+This script NEVER trains or runs a decoder. Missing or invalid input files
+leave only the corresponding subplot blank; the other panels still render.
 """
 
 from pathlib import Path
@@ -87,6 +87,10 @@ def render_simulated_panel(repo_root, dataset, pipeline):
     for ax, models, family in zip(axes, (ACC_4, DDM_4), ("ACC", "DDM")):
         ax.set_title(family, fontsize=13, weight="bold", pad=11)
         path = source / ("_".join(models) + ".csv")
+        if not path.is_file():
+            print(f"[MISSING; blank panel] {path}")
+            ax.set_axis_off()
+            continue
         try:
             frame = pd.read_csv(path)
             missing = [m for m in models if m not in frame.columns]
@@ -105,8 +109,9 @@ def render_simulated_panel(repo_root, dataset, pipeline):
             exp_scores = np.exp(shifted)
             means = (exp_scores / exp_scores.sum(axis=1, keepdims=True)).mean(axis=0)
         except (OSError, ValueError, pd.errors.ParserError) as exc:
-            plt.close(fig)
-            raise ValueError(f"Invalid simulated classifier logits: {path}: {exc}") from exc
+            print(f"[INVALID; blank panel] {path}: {exc}")
+            ax.set_axis_off()
+            continue
         print(f"[OK] {path}: n={len(logits)} | " +
               ", ".join(f"{m}={v:.4f}" for m, v in zip(models, means)))
         xs = np.arange(len(models))
@@ -196,23 +201,6 @@ def main():
         "kraj4": "figure_5_krajbich2010_4models_mean_prob.png",
         "kraj8": "figure_7_krajbich2010_8models_mean_prob.png",
     }
-    # Validate ALL required sources before producing any potentially incomplete
-    # publication figure. The existing generic plotter's simulated Figure 8
-    # always comes from noregen, so it MUST NOT be reused here for regen.
-    required = [inp / filename for filename in names.values()]
-    for dataset in ("food_equal", "krajbich2010"):
-        source = simulated_csv_dir(root, dataset, args.pipeline)
-        required.extend(source / ("_".join(models) + ".csv")
-                        for models in (ACC_4, DDM_4))
-    missing = [p for p in required if not p.is_file()]
-    if missing:
-        raise FileNotFoundError(
-            f"Missing {len(missing)} input file(s) for --pipeline {args.pipeline}:\n"
-            + "\n".join(f"  {p}" for p in missing)
-            + "\nThe script only plots existing decoder outputs; generate the"
-              " matching aRACE_g test logits with the selected pipeline first."
-        )
-
     panels = {key: load_panel(inp / name, args.title_mask_frac)
               for key, name in names.items()}
     food_simulated = render_simulated_panel(root, "food_equal", args.pipeline)
