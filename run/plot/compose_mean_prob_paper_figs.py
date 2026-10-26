@@ -1,10 +1,19 @@
-"""Compose three paper/response-letter PNG figures from existing mean_prob plots.
+"""Compose three publication-style mean_prob figures for one chosen pipeline.
 
-Source: outputs/plots/sbi_9fig_compare_regen/mean_prob/
-Output: outputs/plots/mean_prob_paper_figs/
+All simulated panels are calculated from the *selected pipeline's* aRACE_g
+test-data classifier logits, separately within ACC_4 and DDM_4. Real-data
+panels are assembled from that pipeline's existing mean_prob PNGs.
 
-No classifier inference is performed; only existing images are rearranged.
-Run: python run/plot/compose_mean_prob_paper_figs.py
+Example:
+    python run/plot/compose_mean_prob_paper_figs.py --pipeline compare_regen
+    python run/plot/compose_mean_prob_paper_figs.py --pipeline compare_noregen
+
+Source real figures: outputs/plots/sbi_9fig_<pipeline>/mean_prob/
+Source simulated CSVs: outputs/<dataset>/<pipeline>/test/trial/s6_decode_trial/aRACE_g/
+Default outputs: outputs/plots/mean_prob_paper_figs/<pipeline>/
+
+This script NEVER trains or runs a decoder. Missing inputs cause an error
+before any output is written, rather than silently saving blank panels.
 """
 
 from pathlib import Path
@@ -59,25 +68,25 @@ def load_panel(path, title_mask_frac=0.10):
 
 
 
-def render_krajbich_simulated_panel(repo_root):
-    """Replot Krajbich-specific four-model classifiers on aRACE_g-generated trials.
-
-    Both the data and the classifier must originate from krajbich2010.
-    The true generating model is aRACE_g, not aRACE_t.
-    Missing or invalid CSVs leave the relevant ACC/DDM panel blank.
-    """
-    source = (
-        repo_root / "outputs" / "krajbich2010" / "compare_noregen"
+def simulated_csv_dir(repo_root, dataset, pipeline):
+    """Location of test logits from the requested dataset and pipeline."""
+    return (
+        repo_root / "outputs" / dataset / pipeline
         / "test" / "trial" / "s6_decode_trial" / "aRACE_g"
     )
+
+
+def render_simulated_panel(repo_root, dataset, pipeline):
+    """Replot one dataset's aRACE_g test data using its own ACC/DDM classifiers.
+
+    Never mix a dataset or a pipeline across true data and classifier output.
+    Each set of 4 models is normalized separately, as in the original Figure 8.
+    """
+    source = simulated_csv_dir(repo_root, dataset, pipeline)
     fig, axes = plt.subplots(1, 2, figsize=(10.2, 4.6), facecolor="white")
     for ax, models, family in zip(axes, (ACC_4, DDM_4), ("ACC", "DDM")):
         ax.set_title(family, fontsize=13, weight="bold", pad=11)
         path = source / ("_".join(models) + ".csv")
-        if not path.is_file():
-            print(f"[MISSING; blank panel] {path}")
-            ax.set_axis_off()
-            continue
         try:
             frame = pd.read_csv(path)
             missing = [m for m in models if m not in frame.columns]
@@ -96,9 +105,8 @@ def render_krajbich_simulated_panel(repo_root):
             exp_scores = np.exp(shifted)
             means = (exp_scores / exp_scores.sum(axis=1, keepdims=True)).mean(axis=0)
         except (OSError, ValueError, pd.errors.ParserError) as exc:
-            print(f"[INVALID; blank panel] {path}: {exc}")
-            ax.set_axis_off()
-            continue
+            plt.close(fig)
+            raise ValueError(f"Invalid simulated classifier logits: {path}: {exc}") from exc
         print(f"[OK] {path}: n={len(logits)} | " +
               ", ".join(f"{m}={v:.4f}" for m, v in zip(models, means)))
         xs = np.arange(len(models))
@@ -166,6 +174,9 @@ def save_stacked_figure(img_top, img_bottom, title, top_label, bottom_label,
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pipeline", choices=("compare_regen", "compare_noregen"),
+                        default="compare_regen",
+                        help="Use this pipeline for BOTH simulated logits and real-data figures.")
     parser.add_argument("--input-dir", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--title-mask-frac", type=float, default=0.10)
@@ -174,23 +185,40 @@ def main():
         parser.error("--title-mask-frac must be in [0,1)")
     root = Path(__file__).resolve().parents[2]
     inp = args.input_dir.expanduser().resolve() if args.input_dir else (
-        root / "outputs" / "plots" / "sbi_9fig_compare_regen" / "mean_prob"
+        root / "outputs" / "plots" / f"sbi_9fig_{args.pipeline}" / "mean_prob"
     )
     out = args.output_dir.expanduser().resolve() if args.output_dir else (
-        root / "outputs" / "plots" / "mean_prob_paper_figs"
+        root / "outputs" / "plots" / "mean_prob_paper_figs" / args.pipeline
     )
     names = {
-        "sim": "figure_8_food_equal_simulated_aRACE_g_mean_prob.png",
         "food4": "figure_4_food_equal_4models_mean_prob.png",
         "food8": "figure_6_food_equal_8models_mean_prob.png",
         "kraj4": "figure_5_krajbich2010_4models_mean_prob.png",
         "kraj8": "figure_7_krajbich2010_8models_mean_prob.png",
     }
+    # Validate ALL required sources before producing any potentially incomplete
+    # publication figure. The existing generic plotter's simulated Figure 8
+    # always comes from noregen, so it MUST NOT be reused here for regen.
+    required = [inp / filename for filename in names.values()]
+    for dataset in ("food_equal", "krajbich2010"):
+        source = simulated_csv_dir(root, dataset, args.pipeline)
+        required.extend(source / ("_".join(models) + ".csv")
+                        for models in (ACC_4, DDM_4))
+    missing = [p for p in required if not p.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"Missing {len(missing)} input file(s) for --pipeline {args.pipeline}:\n"
+            + "\n".join(f"  {p}" for p in missing)
+            + "\nThe script only plots existing decoder outputs; generate the"
+              " matching aRACE_g test logits with the selected pipeline first."
+        )
+
     panels = {key: load_panel(inp / name, args.title_mask_frac)
               for key, name in names.items()}
-    kraj_simulated = render_krajbich_simulated_panel(root)
+    food_simulated = render_simulated_panel(root, "food_equal", args.pipeline)
+    kraj_simulated = render_simulated_panel(root, "krajbich2010", args.pipeline)
     save_stacked_figure(
-        panels["sim"], kraj_simulated,
+        food_simulated, kraj_simulated,
         "ACC-Add simulated data",
         "Food Equal", "Krajbich et al. (2010)",
         out / "figure_1_food_equal_simulated_mean_prob.png",
