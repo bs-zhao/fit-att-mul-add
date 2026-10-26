@@ -21,6 +21,7 @@ Examples (run from any working directory):
     python run/plot/plot_sbi_model_probabilities_7fig.py --metric pairwise_prob
     python run/plot/plot_sbi_model_probabilities_7fig.py --metric logit_sum
     python run/plot/plot_sbi_model_probabilities_7fig.py --metric all
+    # Without --metric: generate all metrics, one folder per metric.
     python run/plot/plot_sbi_model_probabilities_7fig.py --pipeline compare_regen --metric mean_prob
 
 Metric definitions (s: subject, m: model, z_sm: classifier logit,
@@ -389,8 +390,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--metric", choices=tuple(METRIC_DESCRIPTIONS) + ("all",),
-        default="mean_prob",
-        help="Plotted statistic; 'all' generates seven figures per statistic.",
+        default="all",
+        help="Plotted statistic; default 'all' generates seven figures per statistic.",
     )
     parser.add_argument(
         "--pipeline", choices=("compare_noregen", "compare_regen"),
@@ -402,11 +403,10 @@ def main() -> None:
         help="Destination directory for PNG figures only.",
     )
     args = parser.parse_args()
-    output_dir = (
+    output_base = (
         args.output_dir.expanduser().resolve() if args.output_dir is not None
         else REPO_ROOT / "outputs" / "plots" / f"sbi_7fig_{args.pipeline}"
     )
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     specifications = (
         (1, "food_equal", (ACC_2, DDM_2), "aRACE_g"),
@@ -419,13 +419,15 @@ def main() -> None:
     )
     metrics = tuple(METRIC_DESCRIPTIONS) if args.metric == "all" else (args.metric,)
     for metric in metrics:
-        print(f"\n===== Metric: {metric} =====")
+        metric_dir = output_base / metric
+        metric_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n===== Metric: {metric} -> {metric_dir} =====")
         for number, dataset, groups, true_model in specifications:
             draw_figure(
                 number, dataset, groups, pipeline=args.pipeline,
-                metric=metric, output_dir=output_dir, true_model=true_model,
+                metric=metric, output_dir=metric_dir, true_model=true_model,
             )
-    print(f"\nComplete: {len(metrics) * 7} PNG figure(s) in {output_dir}")
+    print(f"\nComplete: {len(metrics) * 7} PNG figure(s) under {output_base}")
 
 
 if __name__ == "__main__":
