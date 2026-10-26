@@ -1,4 +1,4 @@
-"""Compose three publication-style mean_prob figures for one chosen pipeline.
+"""Compose four publication-style mean_prob figures for one chosen pipeline.
 
 All three figures are rendered directly from the selected pipeline's classifier
 logit CSVs, with mean_prob calculated via per-participant softmax followed by
@@ -300,22 +300,34 @@ def main():
     )
     food_simulated = render_simulated_panel(root, "food_equal", args.pipeline)
     kraj_simulated = render_simulated_panel(root, "krajbich2010", args.pipeline)
-    save_stacked_figure(
-        food_simulated, kraj_simulated,
-        "ACC-Add simulated data",
-        "Food Equal", "Krajbich et al. (2010)",
-        out / "figure_1_food_equal_simulated_mean_prob.png",
-    )
 
+    save_single_figure(
+        food_simulated, "Food Equal (Simulated)",
+        out / "figure_1_food_equal_simulated_mean_prob.png",
+        figsize=(10.2, 4.9),
+    )
     render_real_figure(
         root, "food_equal", args.pipeline,
         out / "figure_2_food_equal_real_mean_prob.png",
     )
+    save_single_figure(
+        kraj_simulated, "Krajbich et al. (2010) (Simulated)",
+        out / "figure_3_krajbich2010_simulated_mean_prob.png",
+        figsize=(10.2, 4.9),
+    )
     render_real_figure(
         root, "krajbich2010", args.pipeline,
-        out / "figure_3_krajbich2010_real_mean_prob.png",
+        out / "figure_4_krajbich2010_real_mean_prob.png",
     )
-    print(f"\nComplete: 3 PNGs in {out}")
+
+    # Figure 3 used to denote Krajbich real data. Remove only that obsolete
+    # composition output after its successor (Figure 4) has been written.
+    outdated = out / "figure_3_krajbich2010_real_mean_prob.png"
+    if outdated.is_file():
+        outdated.unlink()
+        print(f"[REMOVED obsolete output] {outdated}")
+
+    print(f"\nComplete: 4 PNGs in {out}")
 
 
 if __name__ == "__main__":
