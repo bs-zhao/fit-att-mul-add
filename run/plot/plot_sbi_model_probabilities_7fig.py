@@ -1,10 +1,14 @@
-"""Seven SBI model-comparison figures with selectable summary metrics.
+"""Nine SBI model-comparison figures with selectable summary metrics.
 
 Figure 1: food_equal, simulated ACC-Add (aRACE_g); two ACC vs two DDM
           compare_noregen classifiers.
 Figures 2-3: real food_equal / krajbich2010, two ACC vs two DDM.
 Figures 4-5: real food_equal / krajbich2010, four ACC vs four DDM.
 Figures 6-7: real food_equal / krajbich2010, joint eight-model classifier.
+Figure 8: food_equal, simulated ACC-Add (aRACE_g); four ACC vs four DDM
+          compare_noregen classifiers (the four-model counterpart of Figure 1).
+Figure 9: food_equal, real participants; four ACC vs four DDM
+          (the four-model counterpart of Figure 2; duplicates Figure 4).
 
 The source CSVs contain *logits*. Softmax is applied separately to each
 subject's full classifier candidate set, before any across-subject summary.
@@ -352,7 +356,7 @@ def draw_figure(
         desc = "Simulated data, true model = ACC-Add (aRACE_g)"
     elif number in (2, 3):
         desc = "Real participants; two-model classifiers"
-    elif number in (4, 5):
+    elif number in (4, 5, 9):
         desc = "Real participants; four-model classifiers"
     else:
         desc = "Real participants; eight-model classifier"
@@ -391,12 +395,12 @@ def main() -> None:
     parser.add_argument(
         "--metric", choices=tuple(METRIC_DESCRIPTIONS) + ("all",),
         default="all",
-        help="Plotted statistic; default 'all' generates seven figures per statistic.",
+        help="Plotted statistic; default 'all' generates nine figures per statistic.",
     )
     parser.add_argument(
         "--pipeline", choices=("compare_noregen", "compare_regen"),
         default="compare_noregen",
-        help="Source for real-data figures 2-7; figure 1 always uses compare_noregen.",
+        help="Source for real-data figures 2-7 and 9; figures 1 and 8 always use compare_noregen.",
     )
     parser.add_argument(
         "--output-dir", type=Path, default=None,
@@ -405,7 +409,7 @@ def main() -> None:
     args = parser.parse_args()
     output_base = (
         args.output_dir.expanduser().resolve() if args.output_dir is not None
-        else REPO_ROOT / "outputs" / "plots" / f"sbi_7fig_{args.pipeline}"
+        else REPO_ROOT / "outputs" / "plots" / f"sbi_9fig_{args.pipeline}"
     )
 
     specifications = (
@@ -416,6 +420,8 @@ def main() -> None:
         (5, "krajbich2010", (ACC_4, DDM_4), None),
         (6, "food_equal", (ALL_8,), None),
         (7, "krajbich2010", (ALL_8,), None),
+        (8, "food_equal", (ACC_4, DDM_4), "aRACE_g"),
+        (9, "food_equal", (ACC_4, DDM_4), None),
     )
     metrics = tuple(METRIC_DESCRIPTIONS) if args.metric == "all" else (args.metric,)
     for metric in metrics:
@@ -427,7 +433,7 @@ def main() -> None:
                 number, dataset, groups, pipeline=args.pipeline,
                 metric=metric, output_dir=metric_dir, true_model=true_model,
             )
-    print(f"\nComplete: {len(metrics) * 7} PNG figure(s) under {output_base}")
+    print(f"\nComplete: {len(metrics) * len(specifications)} PNG figure(s) under {output_base}")
 
 
 if __name__ == "__main__":
