@@ -1,14 +1,14 @@
 """Compose three publication-style mean_prob figures for one chosen pipeline.
 
-All simulated panels are calculated from the *selected pipeline's* aRACE_g
-test-data classifier logits, separately within ACC_4 and DDM_4. Real-data
-panels are assembled from that pipeline's existing mean_prob PNGs.
+All three figures are rendered directly from the selected pipeline's classifier
+logit CSVs, with mean_prob calculated via per-participant softmax followed by
+participant averaging. No source PNGs are cropped, masked, or rescaled.
 
 Example:
     python run/plot/compose_mean_prob_paper_figs.py --pipeline compare_regen
     python run/plot/compose_mean_prob_paper_figs.py --pipeline compare_noregen
 
-Source real figures: outputs/plots/sbi_9fig_<pipeline>/mean_prob/
+Source real CSVs: outputs/<dataset>/<pipeline>/real_data/trial/s6_decode_trial/
 Source simulated CSVs: outputs/<dataset>/<pipeline>/test/trial/s6_decode_trial/aRACE_g/
 Default outputs: outputs/plots/mean_prob_paper_figs/<pipeline>/
 
@@ -147,6 +147,116 @@ def render_simulated_panel(repo_root, dataset, pipeline):
     with Image.open(buffer) as image:
         return crop_whitespace(image.convert("RGB"))
 
+
+def render_real_figure(repo_root, dataset, pipeline, output_path):
+    """Render 4-model comparison above joint 8-model comparison at native quality.
+
+    Direct rendering avoids loss of axis labels during image masking/re-cropping.
+    Full-softmax normalization is performed over 4 or 8 classes as appropriate.
+    Missing/invalid CSV leaves only its individual subplot blank.
+    """
+    dataset_label = "Food Equal" if dataset == "food_equal" else "Krajbich et al. (2010)"
+    source = (
+        repo_root / "outputs" / dataset / pipeline
+        / "real_data" / "trial" / "s6_decode_trial"
+    )
+    fig = plt.figure(figsize=(11.2, 8.4), facecolor="white", constrained_layout=True)
+    grid = fig.add_gridspec(2, 2, height_ratios=(1, 1.10), hspace=0.19, wspace=0.16)
+    ax_acc = fig.add_subplot(grid[0, 0])
+    ax_ddm = fig.add_subplot(grid[0, 1])
+    ax_all = fig.add_subplot(grid[1, :])
+    fig.suptitle(dataset_label, fontsize=15, weight="bold")
+
+    def draw(ax, models, family):
+        file = source / ("_".join(models) + ".csv")
+        ax.set_title(family or "All eight models", fontsize=12, weight="bold", pad=12)
+        if not file.is_file():
+            print(f"[MISSING; blank panel] {file}")
+            ax.set_axis_off()
+            return
+        try:
+            frame = pd.read_csv(file)
+            absent = [name for name in models if name not in frame.columns]
+            if absent:
+                raise ValueError(f"Missing columns {absent}")
+            logits = frame.loc[:, list(models)].apply(
+                pd.to_numeric, errors="coerce"
+            ).to_numpy(dtype=float)
+            good = np.isfinite(logits).all(axis=1)
+            if not good.all():
+                print(f"[WARNING] {file}: skipped {(~good).sum()} invalid rows")
+            logits = logits[good]
+            if logits.shape[0] == 0:
+                raise ValueError("No finite participant logits")
+            weights = np.exp(logits - logits.max(axis=1, keepdims=True))
+            means = (weights / weights.sum(axis=1, keepdims=True)).mean(axis=0)
+        except (OSError, ValueError, pd.errors.ParserError) as exc:
+            print(f"[INVALID; blank panel] {file}: {exc}")
+            ax.set_axis_off()
+            return
+
+        if family is None:
+            order = tuple(models.index(name) for name in ACC_4 + DDM_4)
+            display_models = ACC_4 + DDM_4
+            means = means[list(order)]
+        else:
+            display_models = models
+        print(
+            f"[OK] {file}: n={len(logits)} | "
+            + ", ".join(f"{name}={v:.5f}" for name, v in zip(display_models, means))
+        )
+        x = np.arange(len(display_models))
+        bars = ax.bar(
+            x, means, width=0.65, edgecolor="white", linewidth=0.7,
+            color=[MODEL_COLORS[name.rsplit("_", 1)[-1]]
+                   for name in display_models],
+        )
+        labels = [
+            MODEL_LABELS[name.rsplit("_", 1)[-1]]
+            if family is not None else
+            ("ACC-" if name.startswith("aRACE_") else "DDM-")
+            + MODEL_LABELS[name.rsplit("_", 1)[-1]]
+            for name in display_models
+        ]
+        ax.set_xticks(x)
+        ax.set_xticklabels(
+            labels, rotation=28 if family is None else 0,
+            ha="right" if family is None else "center",
+            fontsize=9 if family is None else 10,
+        )
+        ax.set_ylim(0, 1.08)
+        ax.set_yticks(np.linspace(0, 1, 6))
+        ax.set_yticklabels([f"{v}%" for v in (0, 20, 40, 60, 80, 100)])
+        ax.set_ylabel("Mean softmax probability", fontsize=10)
+        ax.grid(axis="y", alpha=0.20)
+        ax.set_axisbelow(True)
+        for spine in ("top", "right"):
+            ax.spines[spine].set_visible(False)
+        for bar, value in zip(bars, means):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2, float(value) + 0.014,
+                f"{value * 100:.1f}%", ha="center", va="bottom", fontsize=9,
+            )
+        ax.text(
+            0.99, 0.985, f"n = {len(logits)}",
+            transform=ax.transAxes, ha="right", va="top",
+            fontsize=9, color="#5C6673",
+        )
+        if family is None:
+            ax.axvline(3.5, color="#AAB1BC", lw=1, ls="--")
+
+    draw(ax_acc, ACC_4, "ACC")
+    draw(ax_ddm, DDM_4, "DDM")
+    draw(ax_all, DDM_4 + ACC_4, None)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(
+        output_path, dpi=300, bbox_inches="tight",
+        pad_inches=0.22, facecolor="white",
+    )
+    plt.close(fig)
+    print(f"[SAVED] {output_path}")
+
 def save_single_figure(img, title, out_path, figsize=(8.2, 4.8), dpi=300):
     fig, ax = plt.subplots(figsize=figsize)
     ax.imshow(img)
@@ -182,27 +292,12 @@ def main():
     parser.add_argument("--pipeline", choices=("compare_regen", "compare_noregen"),
                         default="compare_regen",
                         help="Use this pipeline for BOTH simulated logits and real-data figures.")
-    parser.add_argument("--input-dir", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
-    parser.add_argument("--title-mask-frac", type=float, default=0.10)
     args = parser.parse_args()
-    if not 0 <= args.title_mask_frac < 1:
-        parser.error("--title-mask-frac must be in [0,1)")
     root = Path(__file__).resolve().parents[2]
-    inp = args.input_dir.expanduser().resolve() if args.input_dir else (
-        root / "outputs" / "plots" / f"sbi_9fig_{args.pipeline}" / "mean_prob"
-    )
     out = args.output_dir.expanduser().resolve() if args.output_dir else (
         root / "outputs" / "plots" / "mean_prob_paper_figs" / args.pipeline
     )
-    names = {
-        "food4": "figure_4_food_equal_4models_mean_prob.png",
-        "food8": "figure_6_food_equal_8models_mean_prob.png",
-        "kraj4": "figure_5_krajbich2010_4models_mean_prob.png",
-        "kraj8": "figure_7_krajbich2010_8models_mean_prob.png",
-    }
-    panels = {key: load_panel(inp / name, args.title_mask_frac)
-              for key, name in names.items()}
     food_simulated = render_simulated_panel(root, "food_equal", args.pipeline)
     kraj_simulated = render_simulated_panel(root, "krajbich2010", args.pipeline)
     save_stacked_figure(
@@ -211,12 +306,15 @@ def main():
         "Food Equal", "Krajbich et al. (2010)",
         out / "figure_1_food_equal_simulated_mean_prob.png",
     )
-    save_stacked_figure(panels["food4"], panels["food8"],
-                        "Food Equal", "4 models", "8 models",
-                        out / "figure_2_food_equal_real_mean_prob.png")
-    save_stacked_figure(panels["kraj4"], panels["kraj8"],
-                        "Krajbich et al. (2010)", "4 models", "8 models",
-                        out / "figure_3_krajbich2010_real_mean_prob.png")
+
+    render_real_figure(
+        root, "food_equal", args.pipeline,
+        out / "figure_2_food_equal_real_mean_prob.png",
+    )
+    render_real_figure(
+        root, "krajbich2010", args.pipeline,
+        out / "figure_3_krajbich2010_real_mean_prob.png",
+    )
     print(f"\nComplete: 3 PNGs in {out}")
 
 
