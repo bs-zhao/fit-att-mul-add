@@ -228,10 +228,9 @@ def draw_figure(
         stem += "_8models"
     else:
         stem += f"_{len(model_groups[0])}models"
-    for ext in ("png", "pdf"):
-        target = output_dir / f"{stem}.{ext}"
-        fig.savefig(target, dpi=300, bbox_inches="tight", facecolor="white")
-        print(f"[SAVED] {target}")
+    target = output_dir / f"{stem}.png"
+    fig.savefig(target, dpi=300, bbox_inches="tight", facecolor="white")
+    print(f"[SAVED] {target}")
     plt.close(fig)
 
 
@@ -273,7 +272,7 @@ def main() -> None:
             output_dir=output_dir,
             true_model=true_model,
         )
-    print(f"\nComplete: seven figures (PNG + PDF) in {output_dir}")
+    print(f"\nComplete: seven PNG figures in {output_dir}")
 
 
 if __name__ == "__main__":
