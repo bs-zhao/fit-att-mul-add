@@ -64,7 +64,10 @@ def csv_location(root: Path, dataset: str, pipeline: str, models: tuple,
                  simulated: bool) -> Path:
     branch = ("test/trial/s6_decode_trial/aRACE_g" if simulated
               else "real_data/trial/s6_decode_trial")
-    return root / "outputs" / dataset / pipeline / branch / ("_".join(models) + ".csv")
+    # The existing eight-model decoder saves filenames in DDM-then-ACC order.
+    # Keep figure labels in ACC-then-DDM order; read_scores selects columns by name.
+    file_models = DDM_4 + ACC_4 if models == ALL_8 else models
+    return root / "outputs" / dataset / pipeline / branch / ("_".join(file_models) + ".csv")
 
 
 def read_scores(path: Path, models: tuple) -> tuple[np.ndarray, int]:
@@ -105,7 +108,7 @@ def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
     colors = [COLORS[m.rsplit("_", 1)[1]] for m in models]
     rects = ax.bar(x, means, color=colors, width=0.66 if not compact else 0.62,
                    edgecolor="white", linewidth=0.8, zorder=3)
-    ax.set_title(title, loc="left", pad=15, fontweight="semibold", color=INK)
+    ax.set_title(title, loc="left", pad=15, fontweight="bold", color=INK)
     ax.set_ylabel("Mean classifier softmax probability", labelpad=9)
     ax.set_ylim(0, 1.045)
     ax.set_yticks(np.arange(0.0, 1.01, 0.2))
