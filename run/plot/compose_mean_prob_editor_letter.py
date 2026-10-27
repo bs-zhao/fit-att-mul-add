@@ -15,9 +15,9 @@ Usage (from any working directory):
     python run/plot/compose_mean_prob_editor_letter.py --pipeline compare_noregen
 
 Outputs: outputs/plots/editor_letter_mean_prob/<pipeline>/
-    figure_1_simulated_ACC_Add_food_equal.{png,pdf}
-    figure_2_observed_food_equal.{png,pdf}
-    figure_3_observed_krajbich_eight_models.{png,pdf}
+    figure_1_simulated_ACC_Add_food_equal.png
+    figure_2_observed_food_equal.png
+    figure_3_observed_krajbich_eight_models.png
     plotted_values.csv
 
 No training, decoding, CSV modification, or simulated data generation occurs.
@@ -41,7 +41,7 @@ ACC_4 = ("aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g")
 DDM_4 = ("aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g")
 ALL_8 = ACC_4 + DDM_4
 
-LABELS = {"1": "No attention", "2": "Attended only", "t": "Multiplicative", "g": "Additive"}
+LABELS = {"1": "NoAtt", "2": "AttOnly", "t": "Mul", "g": "Add"}
 SHORT = {"1": "NoAtt", "2": "AttOnly", "t": "Mul", "g": "Add"}
 COLORS = {"1": "#87919D", "2": "#C89C55", "t": "#386FA4", "g": "#C9655D"}
 INK = "#233044"
@@ -56,7 +56,6 @@ def setup_style():
         "axes.edgecolor": "#CBD2DA", "axes.labelcolor": INK,
         "text.color": INK, "xtick.color": INK, "ytick.color": MUTED,
         "savefig.facecolor": "white", "figure.facecolor": "white",
-        "pdf.fonttype": 42, "ps.fonttype": 42,
     })
 
 
@@ -109,7 +108,7 @@ def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
     rects = ax.bar(x, means, color=colors, width=0.66 if not compact else 0.62,
                    edgecolor="white", linewidth=0.8, zorder=3)
     ax.set_title(title, loc="left", pad=15, fontweight="bold", color=INK)
-    ax.set_ylabel("Mean classifier softmax probability", labelpad=9)
+    ax.set_ylabel("Mean softmax probability", labelpad=9)
     ax.set_ylim(0, 1.045)
     ax.set_yticks(np.arange(0.0, 1.01, 0.2))
     ax.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
@@ -136,23 +135,15 @@ def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
     ax.margins(x=0.035)
 
 
-def heading(fig, title: str, subtitle: str):
-    fig.text(0.055, 0.966, title, fontsize=15, fontweight="bold",
+def heading(fig, title: str):
+    fig.text(0.055, 0.965, title, fontsize=13, fontweight="bold",
              color=INK, ha="left", va="top")
-    fig.text(0.055, 0.917, subtitle, fontsize=10, color=MUTED,
-             ha="left", va="top")
-
-
-def footer(fig, message: str):
-    fig.text(0.055, 0.030, message, fontsize=8.2, color=MUTED,
-             ha="left", va="bottom")
 
 
 def write(fig, outdir: Path, name: str, dpi: int):
-    for suffix in ("png", "pdf"):
-        dest = outdir / f"{name}.{suffix}"
-        fig.savefig(dest, dpi=dpi, facecolor="white", bbox_inches="tight", pad_inches=0.12)
-        print(f"[SAVED] {dest}")
+    dest = outdir / f"{name}.png"
+    fig.savefig(dest, dpi=dpi, facecolor="white", bbox_inches="tight", pad_inches=0.12)
+    print(f"[SAVED] {dest}")
     plt.close(fig)
 
 
@@ -178,54 +169,46 @@ def main():
     outdir.mkdir(parents=True, exist_ok=True)
     setup_style()
     metrics: list[dict] = []
-    note = ("Participant-wise softmax, averaged across participants. "
-            "Each candidate set is normalized separately; not BIC weights.")
 
     # Figure 1: original Figure 1 (all content) -- Food Equal simulated ACC-Add.
-    fig = plt.figure(figsize=(11.4, 5.8))
-    heading(fig, "Figure 1  |  Cross-architecture model recovery",
-            "Current-study task structure  ·  Known generating model: ACC-Add")
-    ax1 = fig.add_axes([0.065, 0.23, 0.410, 0.54])
-    ax2 = fig.add_axes([0.565, 0.23, 0.410, 0.54])
-    for ax, models, family in [(ax1, ACC_4, "Candidate models: ACC"),
-                                (ax2, DDM_4, "Candidate models: DDM")]:
+    fig = plt.figure(figsize=(10.6, 4.6))
+    heading(fig, "ACC-Add simulations")
+    ax1 = fig.add_axes([0.075, 0.17, 0.400, 0.63])
+    ax2 = fig.add_axes([0.575, 0.17, 0.400, 0.63])
+    for ax, models, family in [(ax1, ACC_4, "ACC"),
+                                (ax2, DDM_4, "DDM")]:
         path = csv_location(root, "food_equal", args.pipeline, models, simulated=True)
         values, n = read_scores(path, models)
         bars(ax, models, values, n, family)
         record(metrics, "1", family, "food_equal", "simulated", path, models, values, n)
-    footer(fig, note)
     write(fig, outdir, "figure_1_simulated_ACC_Add_food_equal", args.dpi)
 
     # Figure 2: original Figure 2 (all content) -- current-study observed data.
-    fig = plt.figure(figsize=(11.4, 9.5))
-    heading(fig, "Figure 2  |  Behavioral model comparison",
-            "Observed choices  ·  Current study")
-    ax1 = fig.add_axes([0.065, 0.53, 0.410, 0.30])
-    ax2 = fig.add_axes([0.565, 0.53, 0.410, 0.30])
-    ax3 = fig.add_axes([0.075, 0.14, 0.900, 0.28])
+    fig = plt.figure(figsize=(10.6, 7.6))
+    heading(fig, "Food Equal | Observed")
+    ax1 = fig.add_axes([0.075, 0.54, 0.400, 0.29])
+    ax2 = fig.add_axes([0.575, 0.54, 0.400, 0.29])
+    ax3 = fig.add_axes([0.085, 0.12, 0.890, 0.29])
     for ax, models, family, compact in [
-        (ax1, ACC_4, "Four-model comparison: ACC", False),
-        (ax2, DDM_4, "Four-model comparison: DDM", False),
-        (ax3, ALL_8, "Eight-model comparison: ACC and DDM", True),
+        (ax1, ACC_4, "ACC", False),
+        (ax2, DDM_4, "DDM", False),
+        (ax3, ALL_8, "ACC + DDM", True),
     ]:
         path = csv_location(root, "food_equal", args.pipeline, models, simulated=False)
         values, n = read_scores(path, models)
         bars(ax, models, values, n, family, compact=compact)
         record(metrics, "2", family, "food_equal", "observed", path, models, values, n)
-    footer(fig, note)
     write(fig, outdir, "figure_2_observed_food_equal", args.dpi)
 
     # Figure 3: ONLY bottom eight-model panel of original Figure 4.
-    fig = plt.figure(figsize=(11.4, 5.3))
-    heading(fig, "Figure 3  |  External-dataset model comparison",
-            "Observed choices  ·  Krajbich et al. (2010)")
-    ax = fig.add_axes([0.075, 0.24, 0.900, 0.55])
+    fig = plt.figure(figsize=(10.6, 4.5))
+    heading(fig, "Krajbich et al. (2010) | Observed")
+    ax = fig.add_axes([0.085, 0.18, 0.890, 0.63])
     path = csv_location(root, "krajbich2010", args.pipeline, ALL_8, simulated=False)
     values, n = read_scores(path, ALL_8)
-    bars(ax, ALL_8, values, n, "Eight-model comparison: ACC and DDM", compact=True)
-    record(metrics, "3", "Eight-model comparison: ACC and DDM",
+    bars(ax, ALL_8, values, n, "ACC + DDM", compact=True)
+    record(metrics, "3", "ACC + DDM",
            "krajbich2010", "observed", path, ALL_8, values, n)
-    footer(fig, note)
     write(fig, outdir, "figure_3_observed_krajbich_eight_models", args.dpi)
 
     fields = ["figure", "panel", "dataset", "data_type", "true_model",
@@ -235,7 +218,7 @@ def main():
         writer.writeheader()
         writer.writerows(metrics)
     print(f"[SAVED] {outdir / 'plotted_values.csv'}")
-    print("Completed: exactly 3 figures (PNG + PDF), plus a numerical provenance table.")
+    print("Completed: 3 PNG figures and plotted_values.csv.")
 
 
 if __name__ == "__main__":
