@@ -1,0 +1,239 @@
+"""Create three editor-letter figures from existing model-classifier logits.
+
+Kept from compose_mean_prob_paper_figs.py:
+    Original Fig. 1: Food Equal, simulated ACC-Add data, four ACC vs four DDM.
+    Original Fig. 2: Food Equal, observed data, four ACC / four DDM / eight.
+    Original Fig. 4: Krajbich et al. (2010), observed data, eight-model panel ONLY.
+
+Every panel reads its own classifier CSV. For each participant, softmax is
+calculated over that classifier's candidates; the plotted quantity is the mean
+of those softmax scores across participants. Values are NOT BIC weights or
+validated Bayesian posterior model probabilities.
+
+Usage (from any working directory):
+    python run/plot/compose_mean_prob_editor_letter.py --pipeline compare_regen
+    python run/plot/compose_mean_prob_editor_letter.py --pipeline compare_noregen
+
+Outputs: outputs/plots/editor_letter_mean_prob/<pipeline>/
+    figure_1_simulated_ACC_Add_food_equal.{png,pdf}
+    figure_2_observed_food_equal.{png,pdf}
+    figure_3_observed_krajbich_eight_models.{png,pdf}
+    plotted_values.csv
+
+No training, decoding, CSV modification, or simulated data generation occurs.
+All required source CSVs must be present; missing/invalid inputs fail loudly.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+from pathlib import Path
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
+import numpy as np
+import pandas as pd
+
+ACC_4 = ("aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g")
+DDM_4 = ("aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g")
+ALL_8 = ACC_4 + DDM_4
+
+LABELS = {"1": "No attention", "2": "Attended only", "t": "Multiplicative", "g": "Additive"}
+SHORT = {"1": "NoAtt", "2": "AttOnly", "t": "Mul", "g": "Add"}
+COLORS = {"1": "#87919D", "2": "#C89C55", "t": "#386FA4", "g": "#C9655D"}
+INK = "#233044"
+MUTED = "#5C6877"
+GRID = "#E8EDF2"
+
+
+def setup_style():
+    plt.rcParams.update({
+        "font.family": "DejaVu Sans", "font.size": 10,
+        "axes.titlesize": 11, "axes.labelsize": 9,
+        "axes.edgecolor": "#CBD2DA", "axes.labelcolor": INK,
+        "text.color": INK, "xtick.color": INK, "ytick.color": MUTED,
+        "savefig.facecolor": "white", "figure.facecolor": "white",
+        "pdf.fonttype": 42, "ps.fonttype": 42,
+    })
+
+
+def csv_location(root: Path, dataset: str, pipeline: str, models: tuple,
+                 simulated: bool) -> Path:
+    branch = ("test/trial/s6_decode_trial/aRACE_g" if simulated
+              else "real_data/trial/s6_decode_trial")
+    return root / "outputs" / dataset / pipeline / branch / ("_".join(models) + ".csv")
+
+
+def read_scores(path: Path, models: tuple) -> tuple[np.ndarray, int]:
+    if not path.is_file():
+        raise FileNotFoundError(f"Required classifier output not found: {path}\n"
+                                "Run the corresponding s6 decoding script first.")
+    frame = pd.read_csv(path)
+    missing = [name for name in models if name not in frame.columns]
+    if missing:
+        raise ValueError(f"Missing columns in {path}: {missing}")
+    logits = frame.loc[:, models].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    if logits.ndim != 2 or logits.shape[0] == 0:
+        raise ValueError(f"No participants in {path}")
+    if not np.isfinite(logits).all():
+        raise ValueError(f"Nonfinite logits detected in {path}; refusing to hide rows.")
+    # Numerically stable participant-wise softmax, THEN average participants.
+    shifted = logits - np.max(logits, axis=1, keepdims=True)
+    weights = np.exp(shifted)
+    probabilities = weights / weights.sum(axis=1, keepdims=True)
+    means = probabilities.mean(axis=0)
+    if not np.isclose(means.sum(), 1.0, atol=1e-7):
+        raise AssertionError(f"Softmax probabilities do not sum to one: {path}")
+    print(f"[READ] n={len(logits):3d} | {path}")
+    print("       " + ", ".join(f"{m}={v:.4f}" for m, v in zip(models, means)))
+    return means, len(logits)
+
+
+def model_labels(models: tuple, family_labels: bool = False) -> list[str]:
+    if family_labels:
+        return [("ACC" if m.startswith("aRACE") else "DDM") + "-" + SHORT[m.rsplit("_", 1)[1]]
+                for m in models]
+    return [LABELS[m.rsplit("_", 1)[1]] for m in models]
+
+
+def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
+         *, compact: bool = False):
+    x = np.arange(len(models))
+    colors = [COLORS[m.rsplit("_", 1)[1]] for m in models]
+    rects = ax.bar(x, means, color=colors, width=0.66 if not compact else 0.62,
+                   edgecolor="white", linewidth=0.8, zorder=3)
+    ax.set_title(title, loc="left", pad=15, fontweight="semibold", color=INK)
+    ax.set_ylabel("Mean classifier softmax probability", labelpad=9)
+    ax.set_ylim(0, 1.045)
+    ax.set_yticks(np.arange(0.0, 1.01, 0.2))
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
+    ax.set_axisbelow(True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.spines["bottom"].set_color("#D3D9E0")
+    labels = model_labels(models, family_labels=compact)
+    ax.set_xticks(x, labels, rotation=0 if compact else 15,
+                  ha="center" if compact else "right", fontsize=9)
+    ax.tick_params(axis="x", length=0, pad=7)
+    ax.tick_params(axis="y", length=0)
+    ax.text(0.99, 0.985, f"n = {n}", transform=ax.transAxes, ha="right",
+            va="top", color=MUTED, fontsize=9)
+    for rect, val in zip(rects, means):
+        ax.annotate(f"{val:.1%}", (rect.get_x() + rect.get_width() / 2, val),
+                    xytext=(0, 5), textcoords="offset points", ha="center",
+                    va="bottom", fontsize=9, color=INK)
+    if compact:
+        ax.axvline(3.5, color="#BFC7CF", linestyle="--", linewidth=1.0,
+                   zorder=2)
+    ax.margins(x=0.035)
+
+
+def heading(fig, title: str, subtitle: str):
+    fig.text(0.055, 0.966, title, fontsize=15, fontweight="bold",
+             color=INK, ha="left", va="top")
+    fig.text(0.055, 0.917, subtitle, fontsize=10, color=MUTED,
+             ha="left", va="top")
+
+
+def footer(fig, message: str):
+    fig.text(0.055, 0.030, message, fontsize=8.2, color=MUTED,
+             ha="left", va="bottom")
+
+
+def write(fig, outdir: Path, name: str, dpi: int):
+    for suffix in ("png", "pdf"):
+        dest = outdir / f"{name}.{suffix}"
+        fig.savefig(dest, dpi=dpi, facecolor="white", bbox_inches="tight", pad_inches=0.12)
+        print(f"[SAVED] {dest}")
+    plt.close(fig)
+
+
+def record(metrics: list[dict], figure: str, panel: str, dataset: str,
+           kind: str, path: Path, models: tuple, values: np.ndarray, n: int):
+    for model, value in zip(models, values):
+        metrics.append({"figure": figure, "panel": panel, "dataset": dataset,
+                        "data_type": kind, "true_model": "aRACE_g" if kind == "simulated" else "",
+                        "n_participants": n, "candidate_model": model,
+                        "mean_softmax_probability": f"{value:.8f}", "source_csv": str(path)})
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pipeline", choices=("compare_regen", "compare_noregen"),
+                        default="compare_regen")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--dpi", type=int, default=300)
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parents[2]
+    outdir = (args.output_dir.expanduser().resolve() if args.output_dir else
+              root / "outputs/plots/editor_letter_mean_prob" / args.pipeline)
+    outdir.mkdir(parents=True, exist_ok=True)
+    setup_style()
+    metrics: list[dict] = []
+    note = ("Participant-wise softmax, averaged across participants. "
+            "Each candidate set is normalized separately; not BIC weights.")
+
+    # Figure 1: original Figure 1 (all content) -- Food Equal simulated ACC-Add.
+    fig = plt.figure(figsize=(11.4, 5.8))
+    heading(fig, "Figure 1  |  Cross-architecture model recovery",
+            "Current-study task structure  ·  Known generating model: ACC-Add")
+    ax1 = fig.add_axes([0.065, 0.23, 0.410, 0.54])
+    ax2 = fig.add_axes([0.565, 0.23, 0.410, 0.54])
+    for ax, models, family in [(ax1, ACC_4, "Candidate models: ACC"),
+                                (ax2, DDM_4, "Candidate models: DDM")]:
+        path = csv_location(root, "food_equal", args.pipeline, models, simulated=True)
+        values, n = read_scores(path, models)
+        bars(ax, models, values, n, family)
+        record(metrics, "1", family, "food_equal", "simulated", path, models, values, n)
+    footer(fig, note)
+    write(fig, outdir, "figure_1_simulated_ACC_Add_food_equal", args.dpi)
+
+    # Figure 2: original Figure 2 (all content) -- current-study observed data.
+    fig = plt.figure(figsize=(11.4, 9.5))
+    heading(fig, "Figure 2  |  Behavioral model comparison",
+            "Observed choices  ·  Current study")
+    ax1 = fig.add_axes([0.065, 0.53, 0.410, 0.30])
+    ax2 = fig.add_axes([0.565, 0.53, 0.410, 0.30])
+    ax3 = fig.add_axes([0.075, 0.14, 0.900, 0.28])
+    for ax, models, family, compact in [
+        (ax1, ACC_4, "Four-model comparison: ACC", False),
+        (ax2, DDM_4, "Four-model comparison: DDM", False),
+        (ax3, ALL_8, "Eight-model comparison: ACC and DDM", True),
+    ]:
+        path = csv_location(root, "food_equal", args.pipeline, models, simulated=False)
+        values, n = read_scores(path, models)
+        bars(ax, models, values, n, family, compact=compact)
+        record(metrics, "2", family, "food_equal", "observed", path, models, values, n)
+    footer(fig, note)
+    write(fig, outdir, "figure_2_observed_food_equal", args.dpi)
+
+    # Figure 3: ONLY bottom eight-model panel of original Figure 4.
+    fig = plt.figure(figsize=(11.4, 5.3))
+    heading(fig, "Figure 3  |  External-dataset model comparison",
+            "Observed choices  ·  Krajbich et al. (2010)")
+    ax = fig.add_axes([0.075, 0.24, 0.900, 0.55])
+    path = csv_location(root, "krajbich2010", args.pipeline, ALL_8, simulated=False)
+    values, n = read_scores(path, ALL_8)
+    bars(ax, ALL_8, values, n, "Eight-model comparison: ACC and DDM", compact=True)
+    record(metrics, "3", "Eight-model comparison: ACC and DDM",
+           "krajbich2010", "observed", path, ALL_8, values, n)
+    footer(fig, note)
+    write(fig, outdir, "figure_3_observed_krajbich_eight_models", args.dpi)
+
+    fields = ["figure", "panel", "dataset", "data_type", "true_model",
+              "n_participants", "candidate_model", "mean_softmax_probability", "source_csv"]
+    with (outdir / "plotted_values.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(metrics)
+    print(f"[SAVED] {outdir / 'plotted_values.csv'}")
+    print("Completed: exactly 3 figures (PNG + PDF), plus a numerical provenance table.")
+
+
+if __name__ == "__main__":
+    main()
