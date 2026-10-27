@@ -51,7 +51,7 @@ GRID = "#E8EDF2"
 
 def setup_style():
     plt.rcParams.update({
-        "font.family": "DejaVu Sans", "font.size": 10,
+        "font.family": "Times New Roman", "font.size": 10,
         "axes.titlesize": 11, "axes.labelsize": 9,
         "axes.edgecolor": "#CBD2DA", "axes.labelcolor": INK,
         "text.color": INK, "xtick.color": INK, "ytick.color": MUTED,
@@ -185,14 +185,14 @@ def main():
 
     # Figure 2: original Figure 2 (all content) -- current-study observed data.
     fig = plt.figure(figsize=(10.6, 7.6))
-    heading(fig, "Food Equal | Observed")
+    heading(fig, "Within-model-family comparison (4-class classifiers)")
     ax1 = fig.add_axes([0.075, 0.54, 0.400, 0.29])
     ax2 = fig.add_axes([0.575, 0.54, 0.400, 0.29])
     ax3 = fig.add_axes([0.085, 0.12, 0.890, 0.29])
     for ax, models, family, compact in [
         (ax1, ACC_4, "ACC", False),
         (ax2, DDM_4, "DDM", False),
-        (ax3, ALL_8, "ACC + DDM", True),
+        (ax3, ALL_8, "Cross-family comparison (8-class classifier)", True),
     ]:
         path = csv_location(root, "food_equal", args.pipeline, models, simulated=False)
         values, n = read_scores(path, models)
