@@ -107,7 +107,8 @@ def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
     colors = [COLORS[m.rsplit("_", 1)[1]] for m in models]
     rects = ax.bar(x, means, color=colors, width=0.66 if not compact else 0.62,
                    edgecolor="white", linewidth=0.8, zorder=3)
-    ax.set_title(title, loc="left", pad=15, fontweight="bold", color=INK)
+    if title:
+        ax.set_title(title, loc="left", pad=15, fontweight="bold", color=INK)
     ax.set_ylabel("Mean softmax probability", labelpad=9)
     ax.set_ylim(0, 1.045)
     ax.set_yticks(np.arange(0.0, 1.01, 0.2))
@@ -137,6 +138,12 @@ def bars(ax, models: tuple, means: np.ndarray, n: int, title: str,
 
 def heading(fig, title: str):
     fig.text(0.055, 0.965, title, fontsize=13, fontweight="bold",
+             color=INK, ha="left", va="top")
+
+
+def section_heading(fig, title: str, y: float):
+    """Equal typographic level for the two comparisons in Figure 2."""
+    fig.text(0.075, y, title, fontsize=12, fontweight="bold",
              color=INK, ha="left", va="top")
 
 
@@ -185,14 +192,15 @@ def main():
 
     # Figure 2: original Figure 2 (all content) -- current-study observed data.
     fig = plt.figure(figsize=(10.6, 7.6))
-    heading(fig, "Within-model-family comparison (4-class classifiers)")
+    section_heading(fig, "Within-model-family comparison (4-class classifiers)", 0.945)
+    section_heading(fig, "Cross-family comparison (8-class classifier)", 0.475)
     ax1 = fig.add_axes([0.075, 0.54, 0.400, 0.29])
     ax2 = fig.add_axes([0.575, 0.54, 0.400, 0.29])
     ax3 = fig.add_axes([0.085, 0.12, 0.890, 0.29])
     for ax, models, family, compact in [
         (ax1, ACC_4, "ACC", False),
         (ax2, DDM_4, "DDM", False),
-        (ax3, ALL_8, "Cross-family comparison (8-class classifier)", True),
+        (ax3, ALL_8, "", True),
     ]:
         path = csv_location(root, "food_equal", args.pipeline, models, simulated=False)
         values, n = read_scores(path, models)
