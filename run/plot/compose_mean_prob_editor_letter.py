@@ -210,7 +210,7 @@ def main():
 
     # Figure 3: ONLY bottom eight-model panel of original Figure 4.
     fig = plt.figure(figsize=(10.6, 4.5))
-    heading(fig, "Krajbich et al. (2010) | Observed")
+    heading(fig, "Krajbich et al. (2010)")
     ax = fig.add_axes([0.085, 0.18, 0.890, 0.63])
     path = csv_location(root, "krajbich2010", args.pipeline, ALL_8, simulated=False)
     values, n = read_scores(path, ALL_8)
