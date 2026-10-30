@@ -92,8 +92,10 @@ def classifier_metrics(probs, truth, names, dest):
     frame=pd.DataFrame(probs,columns=names)
     frame.insert(0,'true_model',np.array(names)[truth]); frame.insert(1,'pred_model',np.array(names)[pred])
     frame.to_csv(dest/'predictions.csv',index=False)
-    family_probs=np.stack([probs[:,:4].sum(1),probs[:,4:].sum(1)],axis=1)
-    fam=np.zeros((2,2),int); np.add.at(fam,(truth//4,family_probs.argmax(1)),1)
+    ddm=np.array([name.startswith('aDDM') for name in names])
+    true_family=np.where(ddm[truth],0,1)
+    family_probs=np.stack([probs[:,ddm].sum(1),probs[:,~ddm].sum(1)],axis=1)
+    fam=np.zeros((2,2),int); np.add.at(fam,(true_family,family_probs.argmax(1)),1)
     pd.DataFrame(fam,index=['DDM','ACC'],columns=['DDM','ACC']).to_csv(dest/'family_confusion.csv')
     pd.DataFrame(dict(model=names,n=confusion.sum(1),recall=norm.diagonal(),
                      mean_true_probability=mean.diagonal())).to_csv(dest/'per_model_metrics.csv',index=False)
@@ -115,7 +117,7 @@ def classifier_metrics(probs, truth, names, dest):
                 class_bins.append(dict(model=name,lower=a,upper=b,n=int(mask.sum()),
                                        confidence=probs[mask,j].mean(),frequency=(truth[mask]==j).mean()))
     pd.DataFrame(class_bins).to_csv(dest/'classwise_reliability.csv',index=False)
-    dump(dest/'metrics.json',dict(accuracy=correct.mean(),family_accuracy=(family_probs.argmax(1)==truth//4).mean(),
+    dump(dest/'metrics.json',dict(accuracy=correct.mean(),family_accuracy=(family_probs.argmax(1)==true_family).mean(),
          log_loss=-np.log(np.clip(probs[np.arange(len(truth)),truth],1e-12,1)).mean(),
          brier=np.sum((probs-np.eye(k)[truth])**2,axis=1).mean(),
          ece=np.sum(bins.n*abs(bins.confidence-bins.accuracy))/len(truth)))

@@ -35,6 +35,48 @@ There is no separate shell/Slurm wrapper. Submit the Python stages directly usin
 
 Required input (not tracked in Git): `data/krajbich2010/trial_eye.csv`. Its schema is the same as the legacy loader (`subj,v0,v1,response,arr_ml3_left,arr_ml3_time`). RT uses Scheme A: sum of fixation durations, in seconds; `rt_original_ms` is not used for fitting. The input SHA256 is recorded and checked before diagnostics/decoding to prevent accidental design drift.
 
+## Arbitrary 2-8 model subsets for S4-S6
+
+Use `--models MODEL [MODEL ...]` on **each** of S4, S5, and S6 to select any
+two to eight distinct candidates. Available names are `aDDM_1`, `aDDM_2`,
+`aDDM_t`, `aDDM_g`, `aRACE_1`, `aRACE_2`, `aRACE_t`, `aRACE_g`.
+All three stages must use the same set. Names are ordered canonically as
+listed here regardless of argument order; model columns and `--model-prior`
+values follow that order.
+
+```bash
+# Binary comparison, with independent training and diagnostics
+python s4_train_model_classifier.py --mode formal --models aDDM_t aDDM_g
+python s5_model_recovery.py --mode formal --models aDDM_t aDDM_g
+python s6_classify_real_data.py --mode formal --models aDDM_t aDDM_g
+
+# Four-model classifier, separate checkpoint
+python s4_train_model_classifier.py --mode formal --models aDDM_t aDDM_g aRACE_t aRACE_g
+
+# Optional two-model prior (canonical order)
+python s6_classify_real_data.py --mode formal --models aDDM_t aDDM_g --model-prior 0.3 0.7
+```
+
+For proper subsets, output is isolated under
+`outputs/krajbich2010_bf/classifier/<canonical_model_names_joined_with_double_underscores>/<mode>/`.
+For example, the binary comparison saves to
+`outputs/krajbich2010_bf/classifier/aDDM_t__aDDM_g/formal/`.
+The all-eight default, including an explicit full selection, continues to use
+the existing `classifier/formal/` tree, preserving older checkpoints.
+Use `--overwrite` to retrain a previously saved subset.
+
+S4 trains one **K-class** classifier (K=2..8) from fresh prior-predictive
+simulations, independently of S1-S3. S5 performs K-class model recovery with
+K×K confusion and mean-probability matrices, using `--n-per-model` datasets
+*per included model*. S6 exports K posterior probabilities and K(K-1)
+ordered pairwise log Bayes factors per participant. `--model-prior` accepts
+exactly K positive probabilities summing to 1; its default is uniform.
+
+DDM/ACC family sums and recovery are name-based, not positional. When the
+subset contains only one family, its probability and family accuracy are
+trivially 1, so family accuracy is not informative. All posterior model
+probabilities and Bayes factors are **conditional on the selected model set**.
+
 ## Six stages
 
 All Python entrypoints resolve data/output paths from their own location and work from any directory. Below, change into `run/fit_nn/krajbich2010_bf` for shorter commands.

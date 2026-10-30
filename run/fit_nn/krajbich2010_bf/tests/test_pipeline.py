@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from _shared.common import *
+from _shared.diagnostics import classifier_metrics
 from _shared.data import feature, pack, funcs, SCALE
 
 class PipelineTests(unittest.TestCase):
@@ -80,6 +81,51 @@ class PipelineTests(unittest.TestCase):
         np.testing.assert_allclose(probs.sum(1),1,atol=1e-6)
         np.testing.assert_allclose(result['log_bayes_factors'][:,0],0,atol=1e-6)
         np.testing.assert_allclose(np.log(probs[:,1:]/probs[:,:1]),result['log_bayes_factors'][:,1:],atol=1e-5)
+
+    def test_classifier_subset_selection_and_paths(self):
+        p = parser('subset selection', classifier=True)
+        a = p.parse_args(['--models', 'aRACE_g', 'aDDM_t'])
+        self.assertEqual(selected_models(a), ['aDDM_t', 'aRACE_g'])
+        self.assertEqual(directory(a, True).parts[-3:],
+                         ('classifier', 'aDDM_t__aRACE_g', 'formal'))
+        b = p.parse_args([])
+        self.assertEqual(selected_models(b), MODEL_NAMES)
+        self.assertEqual(directory(b, True).parts[-2:], ('classifier', 'formal'))
+        with self.assertRaises(ValueError):
+            selected_models(p.parse_args(['--models', 'aDDM_t']))
+        with self.assertRaises(ValueError):
+            selected_models(p.parse_args(['--models', 'aDDM_t', 'aDDM_t']))
+
+    def test_subset_classifier_and_family_metrics(self):
+        for names in [['aDDM_g', 'aRACE_g'],
+                      ['aDDM_1', 'aDDM_t', 'aDDM_g']]:
+            with self.subTest(names=names):
+                sims = [self.ex.simulator(bf, m, 2100+i, True)[0]
+                        for i, m in enumerate(names)]
+                mc = bf.simulators.ModelComparisonSimulator(sims)
+                w = workflow(mc, model_names=names)
+                raw = mc.sample(6)
+                w.fit_online(epochs=1, num_batches_per_epoch=1,
+                             batch_size=6, validation_data=raw, verbose=0)
+                ckpt = Path(self.temp.name)/('subset_'+str(len(names))+'.keras')
+                w.estimator.save(ckpt)
+                restored = keras.saving.load_model(ckpt)
+                estimates = restored.estimate(conditions=sims[0].sample(2),
+                                              model_prior=np.full(len(names),1/len(names)))
+                probs = estimates['model_probs']
+                self.assertEqual(probs.shape, (2,len(names)))
+                np.testing.assert_allclose(probs.sum(1), 1, atol=1e-6)
+                np.testing.assert_allclose(np.log(probs/probs[:,:1]),
+                                           estimates['log_bayes_factors'], atol=1e-5)
+                dest = Path(self.temp.name)/('metrics_'+str(len(names)))
+                dest.mkdir()
+                classifier_metrics(np.tile(np.eye(len(names)), (2,1)),
+                                   np.tile(np.arange(len(names)), 2), names, dest)
+                metrics = json.loads((dest/'metrics.json').read_text())
+                self.assertAlmostEqual(metrics['accuracy'],1)
+                self.assertEqual(pd.read_csv(dest/'family_confusion.csv',
+                                             index_col=0).values.sum(),2*len(names))
+                keras.backend.clear_session()
 
     def test_padding_invariance(self):
         _,raw,_=self.ex.real()
