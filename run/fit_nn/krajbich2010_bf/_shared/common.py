@@ -140,7 +140,7 @@ def train(args, classifier=False):
     # Only the classifier's formal defaults change. S1 keeps its previous settings;
     # test mode deliberately stays small for fast smoke tests.
     cfg = dict(epochs=args.epochs or (5 if args.mode=='test' else 5000),
-               num_batches_per_epoch=args.batches or (2 if args.mode=='test' else 50),
+               num_batches_per_epoch=args.batches or (2 if args.mode=='test' else (30 if classifier else 50)),
                batch_size=args.batch_size or (8 if args.mode=='test' else (256 if classifier else 64)))
     validation = validation_sim.sample(args.validation or (16 if args.mode=='test' else 2000))
     w = workflow(simulator,None if classifier else args.model,model_names=names)

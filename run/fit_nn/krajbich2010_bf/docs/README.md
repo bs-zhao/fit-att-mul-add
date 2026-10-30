@@ -37,7 +37,7 @@ Required input (not tracked in Git): `data/krajbich2010/trial_eye.csv`. Its sche
 
 ## S4 classifier training defaults (formal mode)
 
-S4 now uses **batch_size=256**, **50 batches per epoch**,
+S4 now uses **batch_size=256**, **30 batches per epoch**,
 **ReduceLROnPlateau(patience=4)** and **EarlyStopping(patience=10)**.
 Its Adam learning rate is still 5e-4, with the same validation set size
 (2,000 simulated participants) and early stopping min_delta (1e-4).
@@ -46,8 +46,8 @@ patience values (8 for LR reduction, 20 for early stopping).
 The S4 `--mode test` batch size remains 8; CLI `--batch-size`
 still overrides the default in either mode.
 
-With 50 batches per epoch, S4 now simulates **12,800 participants/epoch**,
-compared with 3,200 before. This may INCREASE epoch time: online simulation
+With 30 batches per epoch, S4 now simulates **7,680 participants/epoch**,
+compared with 3,200 in the original S4 (batch 64, 50 batches). This may INCREASE epoch time: online simulation
 is performed anew every batch. To keep the number of simulated participants
 near the previous level with batch_size=256, use `--batches 13` (3,328
 participants/epoch). Changing batch size alone is not a speed optimization.
@@ -137,7 +137,7 @@ sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python 
 
 These are separate submissions, not an automatic dependency chain. Wait for step 1 to finish before steps 2/3, and for step 4 before steps 5/6. Repeat steps 1–3 for each of the eight `--model` names. Step 4 trains one classifier covering all eight models and can run independently of the parameter networks. First use `--mode test` for a short smoke run, then switch to `--mode formal`.
 
-Training refuses to overwrite `best.keras` unless `--overwrite` is supplied. Model/mode output trees are separate. Defaults: formal = 5000-epoch ceiling, 50 batches/epoch, batch 64, validation 2000; test = 5 epochs, 2 batches/epoch, batch 8, validation 16 (a workflow smoke test, not a recovery benchmark). Both modes keep the same architecture. `--epochs`, `--batches`, `--batch-size`, `--validation`, `--seed`, `--input`, and `--output` allow controlled runs. Best full models are saved atomically during training; diagnostics can read a completed best checkpoint before training ends.
+Training refuses to overwrite `best.keras` unless `--overwrite` is supplied. Model/mode output trees are separate. Defaults: formal S1 = 5000-epoch ceiling, 50 batches/epoch, batch 64; formal S4 = 5000-epoch ceiling, 30 batches/epoch, batch 256; both use validation 2000. Test = 5 epochs, 2 batches/epoch, batch 8, validation 16 (a workflow smoke test, not a recovery benchmark). Both modes keep the same architecture. `--epochs`, `--batches`, `--batch-size`, `--validation`, `--seed`, `--input`, and `--output` allow controlled runs. Best full models are saved atomically during training; diagnostics can read a completed best checkpoint before training ends.
 
 ## Outputs
 

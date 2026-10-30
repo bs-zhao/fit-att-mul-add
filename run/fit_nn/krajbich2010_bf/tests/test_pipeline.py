@@ -29,6 +29,7 @@ class PipelineTests(unittest.TestCase):
         # Keep these defaults independent between classifier and parameter fitting.
         import inspect
         source = inspect.getsource(train)
+        self.assertIn('(30 if classifier else 50)', source)
         self.assertIn('(256 if classifier else 64)', source)
         self.assertIn('lr_patience = 4 if classifier else 8', source)
         self.assertIn('early_patience = 10 if classifier else 20', source)
