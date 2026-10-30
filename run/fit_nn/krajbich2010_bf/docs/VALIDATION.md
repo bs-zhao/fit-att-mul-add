@@ -28,3 +28,7 @@ All six entrypoints were run on a generated two-participant test CSV (12 and 15 
 Python compilation and shell syntax checks passed. The upstream Keras/PyTorch stack emits NumPy array-conversion deprecation warnings; these did not prevent training, serialization, sampling or diagnostics.
 
 These checks establish implementation/API execution, not fitted-model quality. The real Krajbich participant CSV is not present in the tracked repository; no full real-data training or scientific recovery claim is made. GPU/Slurm execution has not been tested from this CPU workspace.
+
+## Folder reorganization check
+
+After moving shared modules into `_shared/` and updating all six entrypoint imports, the same five-test suite passed again. The top-level file inventory was checked to contain exactly the six `s1`–`s6` Python scripts; requirements, documentation and tests live in subfolders. Shell wrappers were removed in favor of direct `sbatch --wrap` submissions.

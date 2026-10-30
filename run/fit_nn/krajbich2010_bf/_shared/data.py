@@ -4,7 +4,7 @@ import importlib.util
 import hashlib
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[1]
 ROOT = HERE.parents[2]
 LEGACY = HERE.parent / 'krajbich2010'
 

@@ -80,7 +80,7 @@ def recovery(samples, truth, names, bounds, dest):
     fig.tight_layout(); fig.savefig(dest/'coverage.png',dpi=160); plt.close(fig)
 
 def classifier_metrics(probs, truth, names, dest):
-    from common import dump
+    from .common import dump
     pred=probs.argmax(1); k=len(names)
     confusion=np.zeros((k,k),int)
     np.add.at(confusion,(truth,pred),1)

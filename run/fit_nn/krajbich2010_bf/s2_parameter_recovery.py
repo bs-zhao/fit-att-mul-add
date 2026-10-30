@@ -1,5 +1,5 @@
-from common import *
-from diagnostics import recovery, history_plot
+from _shared.common import *
+from _shared.diagnostics import recovery, history_plot
 
 def main():
     p=parser('Fresh held-out parameter recovery and SBC',model=True)

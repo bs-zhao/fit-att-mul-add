@@ -1,5 +1,5 @@
-from common import *
-from diagnostics import classifier_metrics, history_plot
+from _shared.common import *
+from _shared.diagnostics import classifier_metrics, history_plot
 
 def main():
     p=parser('Balanced held-out eight-model recovery and probability calibration')

@@ -7,26 +7,31 @@ Eight-model amortized parameter posteriors and Bayesian model comparison. This i
 - Source: `../krajbich2010/tools/model_info.py` and `funcs.py`, imported by absolute file path. All eight model names, parameter order, uniform prior ranges, and fixed parameters are unchanged. `aRACE_g` retains its original gamma range **[0.1, 1]**, whereas `aDDM_g` uses **[0, 1]**.
 - Simulator: the existing compiled `packages/c_bifood` functions, with `dt=.001`, `extend_last=500000`, `repeat=0`, `rcd=1`, `max_rt=28.287`. Values remain `[right, left]`; choice/fixation 1 means left. Simulator inputs are copied.
 - Each synthetic participant draws one parameter vector and one empirical participant's value/fixation design. Nonhits are omitted as in the legacy generator. Simulated fixation sequences are the truncated/extended sequences returned by the simulator, not the original observed durations.
-- Trial feature order is exactly `trialinfo[2] + choice_one_hot[2] + rt[1] + fsmr[12]` (17 dimensions). See `data.FEATURE_NAMES`. A fixed, documented invertible division by `data.SCALE` improves numerical conditioning. Both simulated and observed data use the same encoding and old maxT/maxNF rules.
+- Trial feature order is exactly `trialinfo[2] + choice_one_hot[2] + rt[1] + fsmr[12]` (17 dimensions). See `_shared.data.FEATURE_NAMES`. A fixed, documented invertible division by `_shared.data.SCALE` improves numerical conditioning. Both simulated and observed data use the same encoding and old maxT/maxNF rules.
 - Variable participant trial counts use zero padding plus BayesFlow 2.1's `summary_mask`; padding is excluded from SetTransformer attention/pooling. `log(1+n_retained)` is a direct condition, because posterior uncertainty and model evidence depend on sample size. Mask and padded rows are never standardized.
 - The reference architecture is retained: SetTransformer(summary_dim=32), spline CouplingFlow, Adam(5e-4, clipnorm=1.5), ReduceLROnPlateau and EarlyStopping. Parameter adapters constrain samples to each original prior interval. Classification uses BayesFlow's ModelComparisonWorkflow with cross-entropy and a uniform eight-model training prior.
 - Fresh online simulations replace the legacy pickle/data2param training engine. No `data2param` or `data2param_flow` dependency is required, and no posterior-based regeneration is used for model comparison. This follows the prior-predictive logic of `compare_noregen` and the reference project.
 
 Reference project reviewed: `bs-zhao/intertemporal-bf-1` at `6c5d66cb5dd711a64a681d3cb6ae02e47265b716`. Legacy source reviewed at `a5cd9df9e564489a8b6fcacd00a47988f592c08e`. This implementation uses **2.1.0 estimator APIs** (`workflow.estimator`), not the reference's 2.0.13 serialization.
 
-## Installation
+## Folder layout and installation
 
-BayesFlow 2.1.0 (latest PyPI release checked 2026-10-30; released 2026-10-23) requires Python 3.12 or 3.13. Select an environment with a suitable GPU PyTorch installation first. An existing Python 3.11 environment cannot be reused.
+The top level contains only the six `s1`–`s6` Python entrypoints plus organized subfolders:
 
-From the repository root:
+- `_shared/`: shared simulation, encoding, workflow and diagnostic code.
+- `config/requirements.txt`: pinned BayesFlow dependency.
+- `docs/`: this guide and validation record.
+- `tests/`: feature, mask, simulator, training and serialization checks.
+
+BayesFlow 2.1.0 requires Python 3.12 or 3.13. Activate your GPU-enabled PyTorch environment before submitting jobs. Install dependencies once from the repository root:
 
 ```bash
-# Install torch appropriate to your platform / CUDA version first.
 python -m pip install torch
-bash run/fit_nn/krajbich2010_bf/setup.sh
+python -m pip install -r run/fit_nn/krajbich2010_bf/config/requirements.txt
+python -m pip install --no-build-isolation -e packages/c_bifood
 ```
 
-On OSC, activate a Python 3.12/3.13 environment with GPU PyTorch, then run `setup.sh`. The supplied Slurm wrapper inherits this environment; it deliberately does not guess an OSC module or activate the old Python 3.11 environment. Submit it from this folder. If your allocation uses a different account, supply `sbatch --account=YOUR_ACCOUNT ...`.
+There is no separate shell/Slurm wrapper. Submit the Python stages directly using `sbatch --wrap`, as shown below. The job inherits your activated environment. Keep the entire `_shared` folder alongside the six scripts.
 
 Required input (not tracked in Git): `data/krajbich2010/trial_eye.csv`. Its schema is the same as the legacy loader (`subj,v0,v1,response,arr_ml3_left,arr_ml3_time`). RT uses Scheme A: sum of fixation durations, in seconds; `rt_original_ms` is not used for fitting. The input SHA256 is recorded and checked before diagnostics/decoding to prevent accidental design drift.
 
@@ -49,23 +54,18 @@ python s5_model_recovery.py --mode test
 python s6_classify_real_data.py --mode test
 ```
 
-Or run every stage for all eight models sequentially:
+For OSC, change into `run/fit_nn/krajbich2010_bf`, activate your environment, and submit each stage directly. Formal examples:
 
 ```bash
-python run_all.py --mode test
-python run_all.py --mode formal
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s1_train_parameter_posterior.py --model aDDM_t --mode formal"
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s2_parameter_recovery.py --model aDDM_t --mode formal"
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s3_decode_real_data.py --model aDDM_t --mode formal"
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s4_train_model_classifier.py --mode formal"
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s5_model_recovery.py --mode formal"
+sbatch --account=PDE0114 --gres=gpu:1 --time=100:00:00 --mem=32G --wrap="python -u s6_classify_real_data.py --mode formal"
 ```
 
-On OSC:
-
-```bash
-sbatch run.sbatch run_all.py --mode test
-# After inspecting smoke-test outputs:
-sbatch run.sbatch run_all.py --mode formal
-# Independent jobs are possible for each parameter network:
-sbatch run.sbatch s1_train_parameter_posterior.py --model aRACE_g --mode formal
-sbatch run.sbatch s4_train_model_classifier.py --mode formal
-```
+These are separate submissions, not an automatic dependency chain. Wait for step 1 to finish before steps 2/3, and for step 4 before steps 5/6. Repeat steps 1–3 for each of the eight `--model` names. Step 4 trains one classifier covering all eight models and can run independently of the parameter networks. First use `--mode test` for a short smoke run, then switch to `--mode formal`.
 
 Training refuses to overwrite `best.keras` unless `--overwrite` is supplied. Model/mode output trees are separate. Defaults: formal = 5000-epoch ceiling, 50 batches/epoch, batch 64, validation 2000; test = 5 epochs, 2 batches/epoch, batch 8, validation 16 (a workflow smoke test, not a recovery benchmark). Both modes keep the same architecture. `--epochs`, `--batches`, `--batch-size`, `--validation`, `--seed`, `--input`, and `--output` allow controlled runs. Best full models are saved atomically during training; diagnostics can read a completed best checkpoint before training ends.
 

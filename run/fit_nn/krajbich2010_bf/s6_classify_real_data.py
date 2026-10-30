@@ -1,5 +1,5 @@
-from common import *
-from diagnostics import heatmap
+from _shared.common import *
+from _shared.diagnostics import heatmap
 
 def main():
     p=parser('Real-data model probabilities and pairwise Bayes factors')

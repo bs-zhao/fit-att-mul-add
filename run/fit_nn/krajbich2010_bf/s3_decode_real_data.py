@@ -1,6 +1,6 @@
-from common import *
-from diagnostics import parameter_summary
-from data import SCALE, funcs
+from _shared.common import *
+from _shared.diagnostics import parameter_summary
+from _shared.data import SCALE, funcs
 
 def behavior(rows):
     x=np.asarray(rows)*SCALE

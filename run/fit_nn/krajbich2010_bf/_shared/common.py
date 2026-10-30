@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import keras
 import bayesflow as bf
-from data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment
+from .data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment
 
 def positive(value):
     n=int(value)
