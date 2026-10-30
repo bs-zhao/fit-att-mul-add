@@ -25,6 +25,15 @@ class PipelineTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls): cls.temp.cleanup()
 
+    def test_classifier_training_defaults_are_scoped(self):
+        # Keep these defaults independent between classifier and parameter fitting.
+        import inspect
+        source = inspect.getsource(train)
+        self.assertIn('(256 if classifier else 64)', source)
+        self.assertIn('lr_patience = 4 if classifier else 8', source)
+        self.assertIn('early_patience = 10 if classifier else 20', source)
+        self.assertIn("batch_size=args.batch_size or", source)
+
     def test_legacy_feature_parity(self):
         pos,dur=[0,1,0],[100,200,300]
         expected=np.r_[[3,8],[0,1],.6,funcs.get_summary(funcs.arr2tp(pos,dur),.001)]

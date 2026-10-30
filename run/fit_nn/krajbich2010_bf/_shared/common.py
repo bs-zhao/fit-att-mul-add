@@ -137,9 +137,11 @@ def train(args, classifier=False):
         validation_sim = bf.simulators.ModelComparisonSimulator([ex.simulator(bf,m,args.seed+100000+1000*i,True)[0] for i,m in enumerate(names)])
     else:
         validation_sim = ex.simulator(bf,args.model,args.seed+100000)[0]
+    # Only the classifier's formal defaults change. S1 keeps its previous settings;
+    # test mode deliberately stays small for fast smoke tests.
     cfg = dict(epochs=args.epochs or (5 if args.mode=='test' else 5000),
                num_batches_per_epoch=args.batches or (2 if args.mode=='test' else 50),
-               batch_size=args.batch_size or (8 if args.mode=='test' else 64))
+               batch_size=args.batch_size or (8 if args.mode=='test' else (256 if classifier else 64)))
     validation = validation_sim.sample(args.validation or (16 if args.mode=='test' else 2000))
     w = workflow(simulator,None if classifier else args.model,model_names=names)
     dump(folder/'metadata.json',dict(bayesflow=version('bayesflow'), seed=args.seed,
@@ -147,10 +149,14 @@ def train(args, classifier=False):
          parameter_names=None if classifier else model_infos[args.model]['free_pnames'],
          input_sha256=ex.sha256, max_trials=ex.max_trials, features=FEATURE_NAMES,
          feature_scale=SCALE.tolist(), config=cfg,
-         model_prior=[1/len(names)]*len(names) if classifier else None))
+         model_prior=[1/len(names)]*len(names) if classifier else None,
+         reduce_lr_patience=4 if classifier else 8,
+         early_stopping_patience=10 if classifier else 20))
+    lr_patience = 4 if classifier else 8
+    early_patience = 10 if classifier else 20
     callbacks=[AtomicBest(folder/'best.keras'), keras.callbacks.CSVLogger(str(folder/'history.csv')),
-               keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=.5,patience=8,min_lr=1e-6),
-               keras.callbacks.EarlyStopping(monitor='val_loss',patience=20,min_delta=1e-4,restore_best_weights=True)]
+               keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=.5,patience=lr_patience,min_lr=1e-6),
+               keras.callbacks.EarlyStopping(monitor='val_loss',patience=early_patience,min_delta=1e-4,restore_best_weights=True)]
     w.fit_online(**cfg, validation_data=validation, callbacks=callbacks)
     w.estimator.save(folder/'final.keras')
     dump(folder/'simulation_stats.json',stats)

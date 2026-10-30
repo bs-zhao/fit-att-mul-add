@@ -35,6 +35,34 @@ There is no separate shell/Slurm wrapper. Submit the Python stages directly usin
 
 Required input (not tracked in Git): `data/krajbich2010/trial_eye.csv`. Its schema is the same as the legacy loader (`subj,v0,v1,response,arr_ml3_left,arr_ml3_time`). RT uses Scheme A: sum of fixation durations, in seconds; `rt_original_ms` is not used for fitting. The input SHA256 is recorded and checked before diagnostics/decoding to prevent accidental design drift.
 
+## S4 classifier training defaults (formal mode)
+
+S4 now uses **batch_size=256**, **50 batches per epoch**,
+**ReduceLROnPlateau(patience=4)** and **EarlyStopping(patience=10)**.
+Its Adam learning rate is still 5e-4, with the same validation set size
+(2,000 simulated participants) and early stopping min_delta (1e-4).
+S1 parameter posterior training stays at batch_size=64 and the original
+patience values (8 for LR reduction, 20 for early stopping).
+The S4 `--mode test` batch size remains 8; CLI `--batch-size`
+still overrides the default in either mode.
+
+With 50 batches per epoch, S4 now simulates **12,800 participants/epoch**,
+compared with 3,200 before. This may INCREASE epoch time: online simulation
+is performed anew every batch. To keep the number of simulated participants
+near the previous level with batch_size=256, use `--batches 13` (3,328
+participants/epoch). Changing batch size alone is not a speed optimization.
+
+```bash
+python s4_train_model_classifier.py --mode formal --models aDDM_t aDDM_g
+# Or keep approximately the original number of simulated participants/epoch:
+python s4_train_model_classifier.py --mode formal --models aDDM_t aDDM_g --batches 13
+```
+
+A currently running Slurm job continues using the values loaded when it
+started. Changing these settings requires starting a new S4 training job,
+and an existing `best.keras` checkpoint must be intentionally handled via
+`--overwrite` (which deletes that checkpoint) or by backing it up first.
+
 ## Arbitrary 2-8 model subsets for S4-S6
 
 Use `--models MODEL [MODEL ...]` on **each** of S4, S5, and S6 to select any
