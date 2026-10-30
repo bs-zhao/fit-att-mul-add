@@ -1,0 +1,3 @@
+# Python 3.12 or 3.13. Install a GPU-enabled torch separately on your machine/OSC.
+bayesflow==2.1.0
+cython>=3.0
