@@ -139,6 +139,33 @@ These are separate submissions, not an automatic dependency chain. Wait for step
 
 Training refuses to overwrite `best.keras` unless `--overwrite` is supplied. Model/mode output trees are separate. Defaults: formal S1 = 5000-epoch ceiling, 50 batches/epoch, batch 64; formal S4 = 5000-epoch ceiling, 30 batches/epoch, batch 256; both use validation 2000. Test = 5 epochs, 2 batches/epoch, batch 8, validation 16 (a workflow smoke test, not a recovery benchmark). Both modes keep the same architecture. `--epochs`, `--batches`, `--batch-size`, `--validation`, `--seed`, `--input`, and `--output` allow controlled runs. Best full models are saved atomically during training; diagnostics can read a completed best checkpoint before training ends.
 
+## Additional experiment: shared RACE-Add simulated data across DDM and RACE
+
+Use aRACE_g to independently generate synthetic participants from its original
+uniform (d, a, gamma) priors. The **same** 17-dimensional data, fixation mask,
+and retained-trial count are passed to existing four-DDM and four-RACE
+classifiers (both loaded from best.keras). This does NOT train new networks.
+
+Run from the krajbich2010_bf folder:
+
+```bash
+python -u experiments/race_add_cross_architecture.py --mode formal --n 1000 --batch-size 25
+sbatch --account=PAS2943 --gres=gpu:1 --cpus-per-task=1 --time=100:00:00 --mem=32G --job-name=bf-RACEadd-cross --output=slurm-cross-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/race_add_cross_architecture.py --mode formal --n 1000 --batch-size 25"
+```
+
+Required checkpoints: classifier/aDDM_1__aDDM_2__aDDM_t__aDDM_g/formal/best.keras
+and classifier/aRACE_1__aRACE_2__aRACE_t__aRACE_g/formal/best.keras.
+Output directory: outputs/krajbich2010_bf/cross_architecture/generated_aRACE_g/formal/seed_20261102/.
+Outputs include per_simulation.csv, summary.json, gamma_quartiles.csv, and
+paired log-BF scatter, delta histogram, gamma dependence and PMP plots.
+
+The paired estimand is DDM log BF(Mul/Add) minus RACE log BF(Mul/Add),
+both computed within each four-model classifier with 0.25 model prior.
+Positive delta means DDM shows stronger *false* support for Mul given
+RACE-Add-generated data. Paired t tests (two-sided and directional),
+Wilcoxon and paired bootstrap CI are reported. Because classifier model
+sets differ, this is a cross-family misspecification stress test, not a
+direct Bayes factor between diffusion and race architectures.
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:
