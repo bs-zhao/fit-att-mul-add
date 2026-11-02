@@ -191,6 +191,43 @@ The result files are `per_simulation.csv`, `summary.json`,
 `theta_quartiles.csv` and plots (`paired_delta_vs_theta.png`, etc.).
 Original Add results continue to use `gamma_quartiles.csv`.
 
+## Wide-prior classifier sensitivity analysis (gamma U(0,5), theta U(0,1))
+
+The baseline tools/model_info.py and existing S4/S5/S6 classifiers remain unchanged.
+A separate experiment wrapper overrides only in-memory free parameter ranges
+for RACE/DDM Add gamma and RACE/DDM Mul theta, then calls the original S4/S5/S6.
+All four-model class priors remain 0.25. Original unfiltered input is reused.
+
+Run from run/fit_nn/krajbich2010_bf:
+
+```bash
+git pull --ff-only
+sbatch --account=PAS2943 --gres=gpu:1 --time=100:00:00 --mem=32G --job-name=wide-RACE --output=wide-RACE-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/wide_prior_classifier.py --stage s4 --family race --mode formal"
+sbatch --account=PAS2943 --gres=gpu:1 --time=100:00:00 --mem=32G --job-name=wide-DDM --output=wide-DDM-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/wide_prior_classifier.py --stage s4 --family ddm --mode formal"
+```
+
+After S4 finishes successfully, run S5 held-out recovery and S6 real data:
+
+```bash
+python -u experiments/wide_prior_classifier.py --stage s5 --family race --mode formal
+python -u experiments/wide_prior_classifier.py --stage s6 --family race --mode formal
+python -u experiments/wide_prior_classifier.py --stage s5 --family ddm --mode formal
+python -u experiments/wide_prior_classifier.py --stage s6 --family ddm --mode formal
+```
+
+Output base: outputs/krajbich2010_bf/prior_sensitivity/gamma_0_5_theta_0_1/.
+Each classifier subset/mode has its own prior_spec.json, best.keras,
+simulation_stats.json, diagnostics and real_data. New priors are used for
+both S4 training and S5 model recovery. S6 uses the matched new best.keras.
+Train refuses to overwrite existing checkpoints unless --overwrite is explicit.
+Test mode: --mode test --epochs 2 --batches 2 --validation 16 for S4;
+test mode S5: --mode test --n-per-model 12.
+Formal mode retains original training defaults: 5000 epoch ceiling,
+30 batches per epoch, batch size 256, validation 2000 with early stopping.
+
+Because prior predictive distributions and Occam factors change, a wider
+gamma prior need not increase Add model evidence. Inspect S5 calibration and
+real-data log BF(Mul/Add) before interpreting any shift.
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:
