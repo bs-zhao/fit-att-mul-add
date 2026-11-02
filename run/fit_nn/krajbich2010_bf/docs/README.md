@@ -166,6 +166,31 @@ RACE-Add-generated data. Paired t tests (two-sided and directional),
 Wilcoxon and paired bootstrap CI are reported. Because classifier model
 sets differ, this is a cross-family misspecification stress test, not a
 direct Bayes factor between diffusion and race architectures.
+### Symmetric experiment: RACE-Mul as the data generator
+
+The same diagnostic now accepts `--generator aRACE_g` (original default)
+or `--generator aRACE_t`. All existing RACE-Add commands and paths are
+unchanged. The RACE-Mul wrapper defaults to `aRACE_t` so it is easy to run
+as a separate Slurm job:
+
+```bash
+python -u experiments/race_mul_cross_architecture.py --mode formal --n 1000 --batch-size 25
+sbatch --account=PAS2943 --gres=gpu:1 --cpus-per-task=1 --time=100:00:00 --mem=32G --job-name=bf-RACEmul-cross --output=slurm-crossmul-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/race_mul_cross_architecture.py --mode formal --n 1000 --batch-size 25"
+```
+
+Generated data follow the original `aRACE_t` priors for `d`, `a`, and
+`theta`, and are identical between both classifier evaluations. A positive
+paired delta means stronger Mul support from DDM than RACE. Under the Mul
+generator, this is not a false-positive measure; compare it with the
+RACE-Add case to distinguish a general multiplicative tilt from selective
+failure to identify additive-generated data.
+
+Outputs are independent of the earlier experiment:
+`outputs/krajbich2010_bf/cross_architecture/generated_aRACE_t/formal/seed_20261102/`.
+The result files are `per_simulation.csv`, `summary.json`,
+`theta_quartiles.csv` and plots (`paired_delta_vs_theta.png`, etc.).
+Original Add results continue to use `gamma_quartiles.csv`.
+
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:

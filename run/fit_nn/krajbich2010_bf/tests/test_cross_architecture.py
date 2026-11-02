@@ -24,6 +24,15 @@ class CrossArchitectureTests(unittest.TestCase):
             np.testing.assert_allclose(logbf, [500, -1400])
             np.testing.assert_allclose(probs.sum(1), 1)
 
+    def test_mul_and_add_generating_model_labels(self):
+        df = pd.DataFrame({"DDM_logBF_Mul_Add": [-1., 2., 3.],
+                           "RACE_logBF_Mul_Add": [-2., 1., 4.]})
+        for generator in ["aRACE_g", "aRACE_t"]:
+            result = paired_summary(df, 30, 12, generator=generator)
+            self.assertEqual(result["generator"], generator)
+            self.assertEqual(result["n"], 3)
+            self.assertEqual(result["n_DDM_stronger"], 2)
+
     def test_paired_delta_sign(self):
         df = pd.DataFrame({"DDM_logBF_Mul_Add": [3., 4., 5., 6.],
                            "RACE_logBF_Mul_Add": [-1., 0., 1., 2.]})

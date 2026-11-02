@@ -1,6 +1,6 @@
-"""Cross-architecture classification on a common aRACE_g-generated test set.
+"""Paired four-DDM vs four-RACE inference on RACE-Add or RACE-Mul simulated data.
 
-No training: load existing four-model DDM and RACE S4 best.keras checkpoints.
+Uses existing S4 best.keras checkpoints. Does not train or alter classifiers.
 """
 import os
 os.environ.setdefault("KERAS_BACKEND", "torch")
@@ -18,7 +18,8 @@ from _shared.common import ROOT, bf, load, dump, positive, nonnegative, model_in
 
 DDM = ["aDDM_1", "aDDM_2", "aDDM_t", "aDDM_g"]
 RACE = ["aRACE_1", "aRACE_2", "aRACE_t", "aRACE_g"]
-GENERATOR = "aRACE_g"
+GENERATOR = "aRACE_g"  # Backward-compatible default
+GENERATORS = ("aRACE_g", "aRACE_t")
 INPUT_KEYS = ("trials", "summary_mask", "n_trials")
 LABELS = ["NoAtt", "AttOnly", "Mul", "Add"]
 
@@ -39,10 +40,10 @@ def classify(estimator, conditions, names):
     expected = np.exp(z) / np.exp(z).sum(axis=1, keepdims=True)
     if not np.allclose(probs, expected, atol=1e-3):
         raise ValueError("Model probabilities do not agree with log Bayes factors")
-    return probs, evidence[:, names.index(names[2])] - evidence[:, names.index(names[3])]
+    return probs, evidence[:, 2] - evidence[:, 3]  # Canonical Mul minus Add log BF
 
 
-def paired_summary(frame, n_bootstrap, seed):
+def paired_summary(frame, n_bootstrap, seed, generator=GENERATOR):
     """Within-simulated-participant contrast of two log BF(Mul/Add) estimates."""
     ddm = frame["DDM_logBF_Mul_Add"].to_numpy(dtype=float)
     race = frame["RACE_logBF_Mul_Add"].to_numpy(dtype=float)
@@ -71,7 +72,7 @@ def paired_summary(frame, n_bootstrap, seed):
             "strong_Add_BF_gt_10": int((bf < -np.log(10)).sum()),
         }
     return {
-        "generator": GENERATOR, "n": n, "DDM": describe(ddm), "RACE": describe(race),
+        "generator": generator, "n": n, "DDM": describe(ddm), "RACE": describe(race),
         "delta_definition": "DDM log BF(Mul/Add) - RACE log BF(Mul/Add)",
         "mean_delta": float(delta.mean()), "median_delta": float(np.median(delta)),
         "sd_delta": float(delta.std(ddof=1)),
@@ -86,7 +87,7 @@ def paired_summary(frame, n_bootstrap, seed):
     }
 
 
-def plots(df, out):
+def plots(df, out, generator=GENERATOR):
     import matplotlib.pyplot as plt
     x = df["RACE_logBF_Mul_Add"].to_numpy()
     y = df["DDM_logBF_Mul_Add"].to_numpy()
@@ -98,7 +99,7 @@ def plots(df, out):
     ax.axhline(0, color="gray", lw=.8)
     ax.axvline(0, color="gray", lw=.8)
     ax.set(xlabel="RACE log BF(Mul/Add)", ylabel="DDM log BF(Mul/Add)",
-           title="Paired predictions on identical RACE-Add data")
+           title=f"Paired predictions on identical {generator}-generated data")
     ax.legend()
     fig.tight_layout()
     fig.savefig(out / "paired_logBF_scatter.png", dpi=180)
@@ -115,11 +116,12 @@ def plots(df, out):
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.scatter(df["true_gamma"], delta, s=14, alpha=.35)
+    attention_name = "gamma" if generator == "aRACE_g" else "theta"
+    ax.scatter(df[f"true_{attention_name}"], delta, s=14, alpha=.35)
     ax.axhline(0, ls="--", color="black")
-    ax.set(xlabel="True RACE-Add gamma", ylabel="DDM minus RACE log BF(Mul/Add)")
+    ax.set(xlabel=f"True {generator} {attention_name}", ylabel="DDM minus RACE log BF(Mul/Add)")
     fig.tight_layout()
-    fig.savefig(out / "paired_delta_vs_gamma.png", dpi=180)
+    fig.savefig(out / f"paired_delta_vs_{attention_name}.png", dpi=180)
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(7, 4.5))
@@ -136,8 +138,10 @@ def plots(df, out):
     plt.close(fig)
 
 
-def main():
+def main(default_generator=GENERATOR):
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--generator", choices=GENERATORS, default=default_generator,
+                   help="Use aRACE_g (Add) or aRACE_t (Mul) to generate held-out data")
     p.add_argument("--mode", choices=["test", "formal"], default="formal")
     p.add_argument("--input", type=Path, default=ROOT / "data/krajbich2010/trial_eye.csv")
     p.add_argument("--output", type=Path, default=ROOT / "outputs/krajbich2010_bf")
@@ -164,9 +168,10 @@ def main():
             raise RuntimeError(f"Unexpected model order or training prior in {folder}")
 
     # Generate only after both loads (load reseeds the simulator's global C RNG).
-    sim, counters = race_ex.simulator(bf, GENERATOR, a.seed + 800000,
+    sim, counters = race_ex.simulator(bf, a.generator, a.seed + 800000,
                                       model_only=False)
-    out = a.output / "cross_architecture" / "generated_aRACE_g" / a.mode / f"seed_{a.seed}"
+    attention_name = "gamma" if a.generator == "aRACE_g" else "theta"
+    out = a.output / "cross_architecture" / f"generated_{a.generator}" / a.mode / f"seed_{a.seed}"
     out.mkdir(parents=True, exist_ok=True)
     frames = []
     for start in range(0, n, a.batch_size):
@@ -177,10 +182,10 @@ def main():
         race_p, race_bf = classify(race_est, conditions, RACE)
         row = pd.DataFrame({
             "sim_id": np.arange(start, start+k),
-            "generator": GENERATOR,
+            "generator": a.generator,
             "true_d": np.asarray(raw["d"]).reshape(-1),
             "true_a": np.asarray(raw["a"]).reshape(-1),
-            "true_gamma": np.asarray(raw["gamma"]).reshape(-1),
+            f"true_{attention_name}": np.asarray(raw[attention_name]).reshape(-1),
             "n_retained_trials": np.asarray(raw["summary_mask"]).sum(axis=1),
             "DDM_logBF_Mul_Add": ddm_bf,
             "RACE_logBF_Mul_Add": race_bf,
@@ -194,7 +199,8 @@ def main():
         print(f"[EVAL] {start+k}/{n}", flush=True)
 
     frame = pd.concat(frames, ignore_index=True)
-    summary = paired_summary(frame, a.bootstrap, a.seed + 900000)
+    summary = paired_summary(frame, a.bootstrap, a.seed + 900000,
+                             generator=a.generator)
     for prefix, names in [("DDM", DDM), ("RACE", RACE)]:
         values = frame[f"{prefix}_best_model"].value_counts()
         summary[prefix]["winner_counts"] = {name:int(values.get(name, 0)) for name in names}
@@ -203,9 +209,10 @@ def main():
         }
     summary["generator_parameter_priors"] = {
         name:[float(z) for z in bounds]
-        for name, bounds in zip(model_infos[GENERATOR]["free_pnames"],
-                                model_infos[GENERATOR]["free_pranges"])
+        for name, bounds in zip(model_infos[a.generator]["free_pnames"],
+                                model_infos[a.generator]["free_pranges"])
     }
+    summary["attention_parameter"] = attention_name
     summary["simulation_counters"] = counters
     summary["input_sha256"] = race_ex.sha256
     summary["checkpoint_DDM"] = str(ddm_folder / "best.keras")
@@ -213,16 +220,18 @@ def main():
     summary["model_priors"] = [0.25]*4
     frame.to_csv(out / "per_simulation.csv", index=False)
     dump(out / "summary.json", summary)
-    frame["gamma_quartile"] = pd.qcut(frame["true_gamma"], 4, duplicates="drop")
-    bins = frame.groupby("gamma_quartile", observed=True).agg(
-        n=("sim_id", "size"), mean_gamma=("true_gamma", "mean"),
+    quartile_col = f"{attention_name}_quartile"
+    frame[quartile_col] = pd.qcut(frame[f"true_{attention_name}"], 4,
+                                   duplicates="drop")
+    bins = frame.groupby(quartile_col, observed=True).agg(
+        n=("sim_id", "size"), mean_attention_param=(f"true_{attention_name}", "mean"),
         ddm_logBF=("DDM_logBF_Mul_Add", "mean"),
         race_logBF=("RACE_logBF_Mul_Add", "mean"),
         paired_delta=("delta_DDM_minus_RACE", "mean"),
     ).reset_index()
-    bins["gamma_quartile"] = bins["gamma_quartile"].astype(str)
-    bins.to_csv(out / "gamma_quartiles.csv", index=False)
-    plots(frame, out)
+    bins[quartile_col] = bins[quartile_col].astype(str)
+    bins.to_csv(out / f"{attention_name}_quartiles.csv", index=False)
+    plots(frame, out, generator=a.generator)
     print("[RESULT] Mean DDM - RACE log BF =", summary["mean_delta"], flush=True)
     print("[RESULT] Paired t p =", summary["paired_t_p_two_sided"], flush=True)
     print("[RESULT] Bootstrap CI =", summary["mean_delta_bootstrap_ci95"], flush=True)
