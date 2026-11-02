@@ -228,6 +228,38 @@ Formal mode retains original training defaults: 5000 epoch ceiling,
 Because prior predictive distributions and Occam factors change, a wider
 gamma prior need not increase Add model evidence. Inspect S5 calibration and
 real-data log BF(Mul/Add) before interpreting any shift.
+## Exact-parity S4 simulation acceleration
+
+`_shared/data.py` now uses Cython `rcd=0` to avoid accumulating and
+materializing per-millisecond latent traces that S4 never consumes.
+The returned choice/RT are unchanged; the observed fixation schedule
+is truncated deterministically at the simulated 1ms decision step,
+including the simulator's original 500000ms final-fixation extension.
+Fixation summary features are computed from durations directly, merging
+adjacent identical gaze segments exactly as `get_summary(arr2tp(...))` does.
+Empirical value/fixation arrays are cached per participant for reuse.
+No change to prior distributions, model formulas, dt, dataset sizes,
+network architecture, or optimization hyperparameters.
+
+Verify bitwise equality of the 17 float32 features under identical
+NumPy and libc RNG seeds **before** launching expensive S4 runs:
+
+```bash
+python -u experiments/verify_fast_simulation.py --family race --n-subjects 2
+python -u experiments/verify_fast_simulation.py --family ddm --n-subjects 2
+```
+
+Run formal new-prior S4 with automatic preflight (separate RACE / DDM jobs):
+
+```bash
+sbatch --account=PAS2943 --gres=gpu:1 --cpus-per-task=4 --time=100:00:00 --mem=32G --job-name=wide-RACE-fast --output=wide-RACE-fast-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/verify_fast_simulation.py --family race --n-subjects 2 && python -u experiments/wide_prior_classifier.py --stage s4 --family race --mode formal"
+sbatch --account=PAS2943 --gres=gpu:1 --cpus-per-task=4 --time=100:00:00 --mem=32G --job-name=wide-DDM-fast --output=wide-DDM-fast-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/verify_fast_simulation.py --family ddm --n-subjects 2 && python -u experiments/wide_prior_classifier.py --stage s4 --family ddm --mode formal"
+```
+
+Preflight fails the job before training on any parity regression. Reported
+simulation-only speedups are local benchmarks, not a guaranteed end-to-end
+training speedup. Existing checkpoint paths remain unchanged; S4 refuses
+to overwrite an existing best.keras unless --overwrite is supplied.
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:
