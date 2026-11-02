@@ -23,7 +23,61 @@ FEATURE_NAMES = ['v0', 'v1', 'choice0', 'choice1', 'rt', 'ttft0', 'ttft1',
 SCALE = np.array([10,10,1,1,28.287,28.287,28.287,1,1,128,128,128,1,1,1,1,128], np.float32)
 MAX_RT = 28.287
 
-def feature(values, choice, rt, pos, dur):
+def fast_fixation_summary(pos, dur):
+    """Exactly reproduce get_summary(arr2tp(pos,dur), .001) without ms expansion.
+
+    Merge adjacent equal fixation codes and ignore zero-duration segments,
+    just as itertools.groupby on the expanded millisecond eye trace does.
+    """
+    positive = dur > 0
+    if not np.any(positive):
+        return [0.0] * 12
+    p = pos[positive]
+    d = dur[positive]
+    n0 = int(d[p == 0].sum())
+    n1 = int(d[p == 1].sum())
+    total_ms = n0 + n1
+    rt = max(total_ms * .001, 1e-9)
+    starts = np.empty(len(p), dtype=bool)
+    starts[0] = True
+    starts[1:] = p[1:] != p[:-1]
+    runs = p[starts]
+    numf = len(runs)
+    first, last = int(p[0]), int(p[-1])
+    return [
+        n0 * .001, n1 * .001,
+        (n0 * .001) / rt, (n1 * .001) / rt,
+        numf, int(np.count_nonzero(runs == 0)),
+        int(np.count_nonzero(runs == 1)),
+        float(first == 0), float(first == 1),
+        float(last == 0), float(last == 1),
+        max(numf - 1, 0),
+    ]
+
+
+def reconstruct_fixations(pos, dur, rt, ndt=0.0):
+    """Recover the rcd=1 truncated gaze sequence from rcd=0 RT, at dt=.001.
+
+    c_bifood extends ONLY the final fixation by 500000 ms. Its simulator
+    terminates at an integer 1-ms step. The same RNG draws occur with either
+    recording mode; only unused accumulator trajectories are omitted.
+    """
+    steps = int(np.rint((float(rt) - float(ndt)) / .001))
+    if steps < 1 or not np.isfinite(rt):
+        raise RuntimeError(f"Invalid simulated decision time {rt}")
+    boundaries = np.cumsum(dur, dtype=np.int64)
+    boundaries[-1] += 500000
+    index = int(np.searchsorted(boundaries, steps, side="left"))
+    if index >= len(pos):
+        raise RuntimeError(f"Decision step {steps} exceeds extended gaze duration")
+    out_dur = np.array(dur[:index + 1], copy=True)
+    out_dur[-1] = steps - (int(boundaries[index-1]) if index else 0)
+    if out_dur[-1] <= 0:
+        raise RuntimeError(f"Invalid last fixation duration: {out_dur[-1]}")
+    return pos[:index + 1], out_dur
+
+
+def feature(values, choice, rt, pos, dur, legacy=False):
     pos, dur = np.asarray(pos, dtype=np.int64), np.asarray(dur, dtype=np.int64)
     if not len(pos) or len(pos) != len(dur) or np.any(dur < 0) or not np.isin(pos, [0,1]).all():
         raise ValueError('Invalid binary fixation sequence')
@@ -31,7 +85,8 @@ def feature(values, choice, rt, pos, dur):
         raise ValueError('Invalid choice/RT')
     if len(pos) >= 128 or np.ceil(dur.sum()/3) >= np.floor(28287/3):
         return None
-    summary = funcs.get_summary(funcs.arr2tp(pos, dur), .001)
+    summary = (funcs.get_summary(funcs.arr2tp(pos, dur), .001)
+               if legacy else fast_fixation_summary(pos, dur))
     x = np.r_[values, np.eye(2)[choice], rt, summary].astype(np.float32)
     if not np.isfinite(x).all():
         raise ValueError('Nonfinite feature')
@@ -50,6 +105,15 @@ class Experiment:
         self.path = Path(path).resolve()
         self.df = funcs.load_food_data(self.path)
         self.groups = list(self.df.groupby('subj', sort=False))
+        # Preconvert the reusable empirical value/fixation schedules once.
+        # Cython internally copies positions/durations before mutating them.
+        self._designs = [
+            [(np.ascontiguousarray([r.v0, r.v1], dtype=np.float64),
+              np.ascontiguousarray(r.arr_pos, dtype=np.int64),
+              np.ascontiguousarray(r.arr_du, dtype=np.int64))
+             for _, r in g.iterrows()]
+            for _, g in self.groups
+        ]
         if not self.groups:
             raise ValueError('No valid participants')
         self.max_trials = max(len(g) for _, g in self.groups)
@@ -71,24 +135,58 @@ class Experiment:
             raise ValueError('No participant has >5 retained trials')
         return ids, {k:np.stack([r[k] for r in records]) for k in records[0]}, audit
 
-    def simulate(self, model, rng, stats, params=None, group=None):
+    def simulate(self, model, rng, stats, params=None, group=None, legacy=False):
+        """Simulate unchanged 1-ms dynamics without unnecessary trace recording.
+
+        legacy=True reproduces the original path for exact parity testing.
+        Production uses cached empirical designs, rcd=0, and direct summary.
+        """
         from c_bifood import sim_trial_aDDM, sim_trial_aRACE
         info = model_infos[model]
         params = funcs.make_params(info, rng) if params is None else params
-        group = self.groups[int(rng.integers(len(self.groups)))][1] if group is None else group
+        if group is None:
+            design_idx = int(rng.integers(len(self.groups)))
+            if legacy:
+                group = self.groups[design_idx][1]
+            else:
+                design = self._designs[design_idx]
+        if legacy:
+            if group is None:
+                raise RuntimeError("Legacy simulation requires an empirical group")
+            design = [
+                (np.ascontiguousarray([r.v0, r.v1], dtype=np.float64),
+                 np.ascontiguousarray(r.arr_pos, dtype=np.int64).copy(),
+                 np.ascontiguousarray(r.arr_du, dtype=np.int64).copy())
+                for _, r in group.iterrows()
+            ]
+        elif group is not None:
+            design = [
+                (np.ascontiguousarray([r.v0, r.v1], dtype=np.float64),
+                 np.ascontiguousarray(r.arr_pos, dtype=np.int64),
+                 np.ascontiguousarray(r.arr_du, dtype=np.int64))
+                for _, r in group.iterrows()
+            ]
         simulator = sim_trial_aDDM if model.startswith('aDDM') else sim_trial_aRACE
         rows = []
-        for _, r in group.iterrows():
-            result = simulator(params, np.ascontiguousarray([r.v0,r.v1], dtype=np.float64),
-                               np.ascontiguousarray(r.arr_pos, dtype=np.int64).copy(),
-                               np.ascontiguousarray(r.arr_du, dtype=np.int64).copy(),
-                               extend_last=500000, repeat=0, dt=.001, rcd=1, max_rt=MAX_RT)
-            (choice, rt, hit), (_, _, pos, dur), *_ = result
+        for values, orig_pos, orig_dur in design:
+            if legacy:
+                result = simulator(params, values, orig_pos.copy(), orig_dur.copy(),
+                                   extend_last=500000, repeat=0, dt=.001,
+                                   rcd=1, max_rt=MAX_RT)
+                (choice, rt, hit), (_, _, pos, dur), *_ = result
+            else:
+                (choice, rt, hit), _ = simulator(
+                    params, values, orig_pos, orig_dur,
+                    extend_last=500000, repeat=0, dt=.001,
+                    rcd=0, max_rt=MAX_RT)
             stats['trials'] += 1
             if not hit:
                 stats['nonhits'] += 1
                 continue
-            x = feature([r.v0,r.v1], int(choice), float(rt), pos, dur)
+            if not legacy:
+                pos, dur = reconstruct_fixations(
+                    orig_pos, orig_dur, rt, ndt=params.get('ndt', 0.0))
+            x = feature(values, int(choice), float(rt), pos, dur, legacy=legacy)
             if x is None:
                 stats['maxT_excluded'] += 1
             else:
