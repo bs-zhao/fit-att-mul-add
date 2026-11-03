@@ -80,8 +80,8 @@ def verify_or_write_spec(folder, spec, stage):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--stage", choices=["s4", "s5", "s6"], required=True)
-    p.add_argument("--family", choices=["race", "ddm"], required=True)
+    p.add_argument("--stage", choices=["s4", "s5", "s6", "report"], required=True)
+    p.add_argument("--family", choices=["race", "ddm", "both"], required=True)
     p.add_argument("--mode", choices=["formal", "test"], default="formal")
     p.add_argument("--seed", type=nonnegative, default=20261030)
     p.add_argument("--input", type=Path, default=ROOT / "data/krajbich2010/trial_eye.csv")
@@ -92,6 +92,14 @@ def main():
     p.add_argument("--n-per-model", type=positive)
     p.add_argument("--overwrite", action="store_true")
     a = p.parse_args()
+    if a.stage == "report":
+        from experiments.report_model_comparison import generate
+        if a.epochs or a.batches or a.batch_size or a.validation or a.n_per_model or a.overwrite:
+            p.error("Report stage accepts only --family and --mode")
+        generate(OUTPUT, a.mode, a.family)
+        return
+    if a.family == "both":
+        p.error("--family both is only valid with --stage report")
     if a.stage != "s4" and (a.epochs or a.batches or a.validation or a.overwrite):
         p.error("S4-only arguments on S5/S6")
     if a.stage != "s5" and a.n_per_model:
@@ -138,6 +146,23 @@ def main():
         else:
             from s6_classify_real_data import main as run_stage
         run_stage()
+        # S5/S6 report generation uses saved CSVs and never reruns inference.
+        # It starts only once both S5 and S6 have completed.
+        from experiments.report_model_comparison import generate
+        def ready(check_folder):
+            return all((check_folder / p).is_file() for p in (
+                "diagnostics/predictions.csv",
+                "diagnostics/reliability.csv",
+                "diagnostics/classwise_reliability.csv",
+                "diagnostics/metrics.json",
+                "real_data/model_probabilities.csv",
+                "real_data/pairwise_log_bayes_factors.csv"))
+        if ready(folder):
+            other = "ddm" if a.family == "race" else "race"
+            other_folder = OUTPUT / "classifier" / "__".join(FAMILIES[other]) / a.mode
+            generate(OUTPUT, a.mode, "both" if ready(other_folder) else a.family)
+        else:
+            print("[REPORT] Awaiting both S5 and S6 outputs", flush=True)
     print("[DONE]", a.stage, a.family, folder, flush=True)
 
 

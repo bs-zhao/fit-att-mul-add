@@ -260,6 +260,39 @@ Preflight fails the job before training on any parity regression. Reported
 simulation-only speedups are local benchmarks, not a guaranteed end-to-end
 training speedup. Existing checkpoint paths remain unchanged; S4 refuses
 to overwrite an existing best.keras unless --overwrite is supplied.
+## Complete current-prior S5/S6 report figures
+
+Current-prior reports are generated automatically when both S5 and S6 have
+completed for a classifier. When both the four-RACE and four-DDM pipelines
+are complete, their 2x4 combined plots are generated as well. The report
+contains only the current classifier results; figures have no historical
+prior overlays or old/new labels.
+
+To regenerate all plots from **existing outputs** without retraining or
+recomputing model posteriors:
+
+    python -u experiments/wide_prior_classifier.py --stage report --family both --mode formal
+
+For just one classifier replace --family both with race or ddm.
+
+Files are saved under:
+    outputs/krajbich2010_bf/prior_sensitivity/gamma_0_5_theta_0_1/reports/formal/
+
+Subfolders are race/, ddm/, and combined/. Each family outputs 16 PNG plus
+16 vector PDF figures, a summary JSON, subject/model CSV summaries and all
+pairwise log-BF/relative-winning-rate CSV matrices. The combined report
+outputs 15 PNG plus 15 PDF figures, a paired subject CSV and summary JSON.
+All 47 individual charts are available in both PNG and PDF.
+
+Content: four-model winning counts and mean model posterior probabilities,
+subject-level probability heatmaps, log BF(Mul/Add) distributions and
+individual results, BF strength >10, six pairwise contrasts, entropy and
+posterior concentration, S5 confusion, classwise recovery, true-model
+probability, calibration (overall and by class), log loss, Brier, ECE,
+and RACE/DDM model agreement and cross-architecture differences.
+
+The difference between two within-architecture log BF(Mul/Add) measures
+is not a direct Bayes factor between DDM and RACE architectures.
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:
