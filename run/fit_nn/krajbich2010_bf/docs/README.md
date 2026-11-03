@@ -293,6 +293,62 @@ and RACE/DDM model agreement and cross-architecture differences.
 
 The difference between two within-architecture log BF(Mul/Add) measures
 is not a direct Bayes factor between DDM and RACE architectures.
+## Current-prior cross-architecture model comparison: four generators x two classifiers
+
+Independent held-out simulated participants are generated under each of
+`aDDM_t` (DDM-Mul), `aDDM_g` (DDM-Add), `aRACE_t` (RACE-Mul), and
+`aRACE_g` (RACE-Add). Each exact simulated dataset is evaluated by BOTH
+the four-DDM and four-RACE classifiers fitted in the wide-prior experiment
+(gamma ~ U(0,5), theta ~ U(0,1)); no classifier is retrained.
+
+This directly examines RACE classifiers applied to DDM-Mul and DDM-Add
+simulations, and DDM classifiers applied to RACE-Mul and RACE-Add simulations.
+Eight generator x classifier conditions are obtained from only four
+independently simulated datasets. Each is sampled from the same empirical
+value/fixation design distribution and given to both classifiers unchanged.
+
+From `run/fit_nn/krajbich2010_bf`, after both new S4 classifiers finish:
+
+```bash
+git pull --ff-only
+sbatch --account=PAS2943 --gres=gpu:1 --cpus-per-task=4 --time=100:00:00 --mem=32G --job-name=bf-cross-wide --output=bf-cross-wide-%j.out --wrap="export KERAS_BACKEND=torch; python -u experiments/cross_architecture_wide_prior.py --mode formal --generator all --n 1000 --batch-size 25"
+```
+
+A quick smoke test is `--mode test --n 8`, assuming the test-mode
+classifiers were trained; for checking only the formally trained
+classifiers use `--mode formal --n 8 --seed 20261104` (independent output).
+
+To run one generator at a time, set `--generator aDDM_t` (or any of
+`aDDM_g`, `aRACE_t`, `aRACE_g`) with the SAME `--seed`, and after all four
+jobs finish, run `--aggregate-only --mode formal --seed <seed>`.
+Each generator has its own deterministic NumPy and Cython RNG seed,
+so a four-generator run and four independent same-seed jobs match.
+
+Outputs:
+`outputs/krajbich2010_bf/prior_sensitivity/gamma_0_5_theta_0_1/`
+`cross_architecture/formal/seed_20261103/`, with subfolders
+`generated_aDDM_t/`, `generated_aDDM_g/`, `generated_aRACE_t/`,
+`generated_aRACE_g/`, and `combined/`.
+
+Per generator: `per_simulation.csv` (both classifiers' four model
+probabilities, winning model, all six pairwise log BFs, true parameters,
+retained trial counts, paired Mul/Add difference), `pairwise_summary.csv`,
+`summary.json` (paired tests and bootstrap 95% CI), plus 8 PNG/PDF
+figure pairs showing model winners, probabilities, Mul/Add distributions,
+evidence strength, architecture scatter/differences, effect parameter,
+and probability heatmaps.
+
+Combined: `cross_architecture_8_conditions.csv`, `per_simulation_all.csv`,
+two 4x4 model-win matrices and mean probability matrices, paired statistics,
+and 10 PNG/PDF figure pairs. The eight conditions are 4 generators x
+2 evaluated classifier families.
+
+IMPORTANT: When simulated DDM data are evaluated by a RACE classifier
+(or vice versa), the true generating model is not among the four
+classifier candidates. A matching Mul/Add category in that case means
+matching the attention mechanism, **not recovering the true model**.
+The reported architecture contrast is a difference between within-family
+log BF(Mul/Add), not a direct DDM-versus-RACE Bayes factor.
 ## Outputs
 
 Everything goes to `outputs/krajbich2010_bf` by default:
