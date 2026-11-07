@@ -31,10 +31,13 @@ def feature_parity():
         ([0, 1, 0], [100, 200, 300]),
         ([0, 0, 1, 1, 0], [0, 10, 0, 70, 6]),
         ([1, 1, 0, 0, 1], [15, 0, 11, 3, 2]),
+        ([0, 2, 0, 1], [100, 25, 50, 300]),
+        ([-1, 1, 3, 1, 0], [250, 60, 80, 100, 240]),
+        ([2, 3, -1], [100, 250, 400]),
     ]
     for _ in range(500):
         n = int(rng.integers(1, 20))
-        cases.append((rng.integers(0, 2, n),
+        cases.append((rng.choice(np.array([-1, 0, 1, 2, 3], dtype=np.int64), n),
                       rng.integers(0, 3500, n)))
     for p, d in cases:
         p, d = np.asarray(p, np.int64), np.asarray(d, np.int64)

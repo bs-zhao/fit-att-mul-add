@@ -32,6 +32,33 @@ class FastSimulationTests(unittest.TestCase):
             ref = feature([5, 6], 1, .5, pos, durations, legacy=True)
             np.testing.assert_array_equal(x, ref)
 
+    def test_nonbinary_gaze_codes_match_legacy_summary_and_features(self):
+        """Off-target gaze codes remain in simulations, but not gaze summaries."""
+        from _shared.data import funcs
+        cases = [
+            ([0, 2, 0, 1], [100, 25, 50, 300]),  # off-target splits same-eye runs
+            ([-1, 1, 3, 1, 0], [250, 60, 80, 100, 240]),
+            ([2, 3, -1], [100, 250, 400]),          # no valid AOI
+            ([0, 2, 1, 2, 0], [0, 30, 0, 120, 50]),
+        ]
+        for pp, dd in cases:
+            with self.subTest(pos=pp, dur=dd):
+                p, d = np.asarray(pp, np.int64), np.asarray(dd, np.int64)
+                legacy = funcs.get_summary(funcs.arr2tp(p,d),.001)
+                np.testing.assert_allclose(fast_fixation_summary(p,d),legacy,rtol=0,atol=1e-12)
+                fast = feature([4,8],0,max(.001,d.sum()*.001),p,d)
+                slow = feature([4,8],0,max(.001,d.sum()*.001),p,d,legacy=True)
+                np.testing.assert_array_equal(fast,slow)
+
+        rng = np.random.default_rng(20261107)
+        for _ in range(250):
+            n = int(rng.integers(1,30))
+            p = rng.choice(np.array([-1,0,1,2,3],np.int64),size=n)
+            d = rng.integers(0,101,size=n,dtype=np.int64)
+            a = feature([3,6],1,max(.001,d.sum()*.001),p,d)
+            b = feature([3,6],1,max(.001,d.sum()*.001),p,d,legacy=True)
+            np.testing.assert_array_equal(a,b)
+
     def test_final_fixation_extension_and_boundaries(self):
         pos = np.array([0, 1, 0], np.int64)
         dur = np.array([300, 500, 400], np.int64)

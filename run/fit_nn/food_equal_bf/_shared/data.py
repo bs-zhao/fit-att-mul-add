@@ -64,11 +64,15 @@ def fast_fixation_summary(pos, dur):
     Merge adjacent equal fixation codes and ignore zero-duration segments,
     just as itertools.groupby on the expanded millisecond eye trace does.
     """
-    positive = dur > 0
-    if not np.any(positive):
+    # Match food_equal/tools/funcs.py:get_summary(arr2tp(pos,dur),.001):
+    # that implementation expands all fixations, then excludes every gaze
+    # code other than 0 or 1 before computing runs and dwell times.
+    # Filtering invalid codes AFTER simulation preserves c_bifood dynamics.
+    valid = (dur > 0) & ((pos == 0) | (pos == 1))
+    if not np.any(valid):
         return [0.0] * 12
-    p = pos[positive]
-    d = dur[positive]
+    p = pos[valid]
+    d = dur[valid]
     n0 = int(d[p == 0].sum())
     n1 = int(d[p == 1].sum())
     total_ms = n0 + n1
@@ -114,8 +118,11 @@ def reconstruct_fixations(pos, dur, rt, ndt=0.0):
 
 def feature(values, choice, rt, pos, dur, legacy=False):
     pos, dur = np.asarray(pos, dtype=np.int64), np.asarray(dur, dtype=np.int64)
-    if not len(pos) or len(pos) != len(dur) or np.any(dur < 0) or not np.isin(pos, [0,1]).all():
-        raise ValueError('Invalid binary fixation sequence')
+    if not len(pos) or len(pos) != len(dur) or np.any(dur < 0):
+        raise ValueError('Invalid fixation sequence lengths/durations')
+    # The legacy food_equal simulator handles any non-1 gaze position in
+    # its existing else branch. The legacy get_summary ignores non-0/1
+    # positions. Preserve BOTH behaviors; do not recode gaze pre-simulation.
     if choice not in (0, 1) or not np.isfinite(rt) or rt <= 0:
         raise ValueError('Invalid choice/RT')
     if len(pos) >= MAX_LEN_NF or np.ceil(dur.sum()/3) >= np.floor(MAX_LEN_RT/3):

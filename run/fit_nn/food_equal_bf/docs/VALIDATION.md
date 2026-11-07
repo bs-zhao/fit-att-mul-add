@@ -41,3 +41,17 @@ python -u s6_classify_real_data.py --mode test --models aRACE_1 aRACE_2 aRACE_t 
 
 Full integration validation has not been executed on OSC as part of this
 GitHub-only migration. Do not interpret static tests as runtime network validation.
+
+## Food Equal off-target fixation codes
+
+Some food_equal empirical gaze sequences include AOI codes other than 0/1.
+The original Cython DDM/RACE simulator assigns every code !=1 to its existing
+else branch, while the original food_equal `get_summary` excludes non-0/1
+codes when calculating gaze summaries (including number of gaze runs).
+The migrated optimized feature extractor now matches these two behaviors:
+original coded fixations remain unchanged during simulation, but off-target
+codes are removed from the gaze-summary calculation. This fixes S4 validation
+simulation failures on nonbinary gaze without changing model dynamics.
+Run `python -m unittest discover -s tests -v` and both
+`experiments/verify_fast_simulation.py --family race|ddm --n-subjects 2`
+preflights on OSC before long training. Only `food_equal_bf` was patched.
