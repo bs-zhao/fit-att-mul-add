@@ -5,7 +5,8 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import numpy as np
 from _shared.data import (LEGACY, MODEL_NAMES, model_infos, feature, funcs,
-                          MAX_RT, MAX_LEN_RT, MAX_LEN_NF, SCALE, fast_fixation_summary)
+                          MAX_RT, MAX_LEN_RT, MAX_LEN_NF, SCALE, fast_fixation_summary,
+                          _module, ATTENTION_PRIORS, PRIOR_PROFILE, prior_spec)
 
 
 class FoodEqualSourceTests(unittest.TestCase):
@@ -18,9 +19,38 @@ class FoodEqualSourceTests(unittest.TestCase):
         ])
         self.assertEqual(model_infos["aDDM_1"]["free_pranges"], [(0.1,5),(1,5)])
         self.assertEqual(model_infos["aRACE_g"]["free_pranges"],
-                         [(0.1,8),(0.5,5),(0.1,1)])
+                         [(0.1,8),(0.5,5),(0.0,5.0)])
         self.assertEqual(model_infos["aDDM_g"]["free_pranges"],
-                         [(0.1,5),(1,5),(0.0,1)])
+                         [(0.1,5),(1,5),(0.0,5.0)])
+        self.assertEqual(model_infos["aRACE_t"]["free_pranges"],
+                         [(0.1,8),(0.5,5),(0.0,1.0)])
+        self.assertEqual(model_infos["aDDM_t"]["free_pranges"],
+                         [(0.1,5),(1,5),(0.0,1.0)])
+
+    def test_all_wide_attention_priors_and_legacy_file_unchanged(self):
+        legacy = _module("food_original_prior_audit", LEGACY/"tools/model_info.py").model_infos
+        for name in MODEL_NAMES:
+            with self.subTest(name=name):
+                now, original = model_infos[name], legacy[name]
+                self.assertEqual(now["free_pnames"], original["free_pnames"])
+                self.assertEqual(now["free_pnames_ml"], original["free_pnames_ml"])
+                self.assertEqual(now["fixed_pvalues"], original["fixed_pvalues"])
+                self.assertEqual(now["fixed_pnames"], original["fixed_pnames"])
+                self.assertEqual(now["free_pranges"][:2], original["free_pranges"][:2])
+                self.assertEqual(now["free_pranges_ml"][:2], original["free_pranges_ml"][:2])
+                if name.endswith("_t"):
+                    self.assertEqual(now["free_pranges"][2], ATTENTION_PRIORS["theta"])
+                    self.assertEqual(now["free_pranges_ml"][2], ATTENTION_PRIORS["theta"])
+                elif name.endswith("_g"):
+                    self.assertEqual(now["free_pranges"][2], ATTENTION_PRIORS["gamma"])
+                    self.assertEqual(now["free_pranges_ml"][2], ATTENTION_PRIORS["gamma"])
+                else:
+                    self.assertEqual(now["free_pranges"], original["free_pranges"])
+                    self.assertEqual(now["free_pranges_ml"], original["free_pranges_ml"])
+        self.assertEqual(legacy["aRACE_g"]["free_pranges"][2], (0.1, 1))
+        self.assertEqual(legacy["aDDM_g"]["free_pranges"][2], (0.0, 1))
+        self.assertEqual(prior_spec(["aRACE_g"])["profile"], PRIOR_PROFILE)
+        self.assertEqual(prior_spec(["aRACE_g"])["free_priors"]["aRACE_g"]["gamma"], [0.0,5.0])
 
     def test_food_equal_rt_and_fixation_cutoffs(self):
         self.assertEqual(MAX_RT, 14.5)

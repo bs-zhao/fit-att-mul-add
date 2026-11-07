@@ -1,4 +1,4 @@
-"""Optional food_equal prior sensitivity (NOT the default S1-S6 priors): gamma U(0,5), theta U(0,1).
+"""Optional isolated-output runner; food_equal_bf S1-S6 already use gamma U(0,5), theta U(0,1).
 
 Stages s4, s5, s6 call the unchanged BayesFlow training/recovery/real-data
 entry points. New and original artifacts are kept in separate directories.

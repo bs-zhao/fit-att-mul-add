@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import keras
 import bayesflow as bf
-from .data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment
+from .data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment, prior_spec
 
 def positive(value):
     n=int(value)
@@ -145,6 +145,7 @@ def train(args, classifier=False):
     validation = validation_sim.sample(args.validation or (16 if args.mode=='test' else 2000))
     w = workflow(simulator,None if classifier else args.model,model_names=names)
     dump(folder/'metadata.json',dict(bayesflow=version('bayesflow'), seed=args.seed,
+         prior_spec=prior_spec(names if classifier else [args.model]),
          model_names=names if classifier else MODEL_NAMES, model=None if classifier else args.model,
          parameter_names=None if classifier else model_infos[args.model]['free_pnames'],
          input_sha256=ex.sha256, max_trials=ex.max_trials, features=FEATURE_NAMES,
@@ -167,6 +168,14 @@ def load(args, classifier=False):
     meta=json.loads((folder/'metadata.json').read_text())
     if classifier and meta['model_names'] != selected_models(args):
         raise ValueError('Checkpoint model_names do not match --models selection')
+    required_prior_spec = prior_spec(selected_models(args) if classifier else [args.model])
+    if meta.get('prior_spec') != required_prior_spec:
+        raise ValueError(
+            f"Checkpoint prior mismatch or unverified legacy checkpoint: {folder}. "
+            "food_equal_bf uses theta U(0,1) and gamma U(0,5) by default. "
+            "Retrain with the current priors, or specify a separate --output directory. "
+            "An older checkpoint without prior_spec cannot be reused."
+        )
     ex=Experiment(args.input)
     if ex.sha256 != meta['input_sha256']:
         raise ValueError('Input CSV differs from the training design. Use the original training CSV.')

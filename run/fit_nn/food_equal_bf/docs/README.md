@@ -5,8 +5,9 @@ Eight-model amortized parameter posteriors and Bayesian model comparison. This i
 ## Dataset-specific migration (food_equal)
 
 This is an independent copy of the complete BayesFlow pipeline from
-`run/fit_nn/krajbich2010_bf`, adapted to the ORIGINAL, unmodified
-`run/fit_nn/food_equal` model definitions and the food_equal trial data.
+`run/fit_nn/krajbich2010_bf`, adapted to the original `run/fit_nn/food_equal` model definitions
+and the food_equal trial data. Only the BF pipeline's attention priors
+are widened; the original model_info.py and simulator are not modified.
 The simulated decision equations, Cython implementation, 1-ms steps,
 choice/gaze encoding, and 17-dimensional trial features are unchanged.
 
@@ -18,10 +19,33 @@ choice/gaze encoding, and 17-dimensional trial features are unchanged.
 - The 17-feature scale uses 15 seconds (RT/dwell) and 128 fixations.
 - Independent checkpoints, recovery diagnostics, real-data inference,
   model-comparison data, and figures: `outputs/food_equal_bf/`.
-- `experiments/wide_prior_classifier.py` and cross-architecture wide-prior
-  experiments are COPIED as OPTIONAL sensitivity workflows; they modify
-  attention parameter priors ONLY WHEN EXPLICITLY RUN, and do not change
-  the standard S1-S6 model priors.
+- **Default S1-S6 priors are WIDE:** aDDM_t/aRACE_t `theta ~ U(0,1)`
+  and aDDM_g/aRACE_g `gamma ~ U(0,5)`. Original `d`, `a`,
+  NoAtt/AttOnly and fixed parameters remain unchanged.
+- No changes are made to `krajbich2010_bf` or to the legacy
+  `food_equal/tools/model_info.py`.
+- `experiments/wide_prior_classifier.py` remains as an optional compatible
+  workflow with the SAME widened ranges but a separate
+  `prior_sensitivity/gamma_0_5_theta_0_1/` output directory.
+- Existing narrow-prior checkpoints are **not compatible** with this default
+  and must be retrained. Metadata stores the exact generating priors; S2/S3
+  and S5/S6 reject missing or mismatched prior metadata.
+
+### Default model priors: four attention models
+
+| Model | d | a | Attention prior |
+|---|---|---|---|
+| aDDM_t | U(0.1,5) | U(1,5) | theta U(0,1) |
+| aDDM_g | U(0.1,5) | U(1,5) | gamma U(0,5) |
+| aRACE_t | U(0.1,8) | U(0.5,5) | theta U(0,1) |
+| aRACE_g | U(0.1,8) | U(0.5,5) | gamma U(0,5) |
+
+All S1 parameter-posterior training, S2 recovery, S3 decoding, S4
+classifier training, S5 model recovery, S6 real data model comparison
+and synthetic cross-architecture scripts use the same wide priors
+by default. `--output` remains `outputs/food_equal_bf/` for the
+standard S1-S6. Existing checkpoints not explicitly tagged with
+the exact wide prior spec are rejected at loading.
 
 ### Minimal OSC commands (run from `run/fit_nn/food_equal_bf`)
 
@@ -47,12 +71,12 @@ parameter priors differ. Existing food_equal legacy output files are
 read-only reference inputs; new training results are always separate.
 ## What is reused and what changes
 
-- Source: `../food_equal/tools/model_info.py` and `funcs.py`, imported by absolute file path. All eight model names, parameter order, uniform prior ranges, and fixed parameters are unchanged. `aRACE_g` retains its original gamma range **[0.1, 1]**, whereas `aDDM_g` uses **[0, 1]**.
+- Source: `../food_equal/tools/model_info.py` and `funcs.py`, imported by absolute file path. Model equations, model names, parameter order, non-attention priors and all fixed parameters remain unchanged. An independent in-memory deep copy of the model definitions has widened attention priors: Mul theta **[0,1]** and Add gamma **[0,5]** in both DDM and RACE. The legacy source file is never edited.
 - Simulator: the existing compiled `packages/c_bifood` functions, with `dt=.001`, `extend_last=500000`, `repeat=0`, `rcd=1`, `max_rt=14.5`. Values remain `[right, left]`; choice/fixation 1 means left. Simulator inputs are copied.
 - Each synthetic participant draws one parameter vector and one empirical participant's value/fixation design. Nonhits are omitted as in the legacy generator. Simulated fixation sequences are the truncated/extended sequences returned by the simulator, not the original observed durations.
 - Trial feature order is exactly `trialinfo[2] + choice_one_hot[2] + rt[1] + fsmr[12]` (17 dimensions). See `_shared.data.FEATURE_NAMES`. A fixed, documented invertible division by `_shared.data.SCALE` improves numerical conditioning. Both simulated and observed data use the same encoding and old maxT/maxNF rules.
 - Variable participant trial counts use zero padding plus BayesFlow 2.1's `summary_mask`; padding is excluded from SetTransformer attention/pooling. `log(1+n_retained)` is a direct condition, because posterior uncertainty and model evidence depend on sample size. Mask and padded rows are never standardized.
-- The reference architecture is retained: SetTransformer(summary_dim=32), spline CouplingFlow, Adam(5e-4, clipnorm=1.5), ReduceLROnPlateau and EarlyStopping. Parameter adapters constrain samples to each original prior interval. Classification uses BayesFlow's ModelComparisonWorkflow with cross-entropy and a uniform eight-model training prior.
+- The reference architecture is retained: SetTransformer(summary_dim=32), spline CouplingFlow, Adam(5e-4, clipnorm=1.5), ReduceLROnPlateau and EarlyStopping. Parameter adapters constrain samples to the BF pipeline's widened attention prior intervals (and unchanged non-attention bounds). Classification uses BayesFlow's ModelComparisonWorkflow with cross-entropy and a uniform eight-model training prior.
 - Fresh online simulations replace the legacy pickle/data2param training engine. No `data2param` or `data2param_flow` dependency is required, and no posterior-based regeneration is used for model comparison. This follows the prior-predictive logic of `compare_noregen` and the reference project.
 
 Reference project reviewed: `bs-zhao/intertemporal-bf-1` at `6c5d66cb5dd711a64a681d3cb6ae02e47265b716`. Legacy source reviewed at `a5cd9df9e564489a8b6fcacd00a47988f592c08e`. This implementation uses **2.1.0 estimator APIs** (`workflow.estimator`), not the reference's 2.0.13 serialization.

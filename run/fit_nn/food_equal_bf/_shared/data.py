@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import hashlib
+from copy import deepcopy
 import numpy as np
 
 HERE = Path(__file__).resolve().parents[1]
@@ -15,8 +16,38 @@ def _module(name, path):
     return module
 
 funcs = _module('food_legacy_funcs', LEGACY / 'tools/funcs.py')
-model_infos = _module('food_legacy_models', LEGACY / 'tools/model_info.py').model_infos
+# Keep the original food_equal model_info.py untouched. The BF project
+# operates on an independent copy with WIDE attention priors by default.
+model_infos = deepcopy(_module('food_legacy_models', LEGACY / 'tools/model_info.py').model_infos)
 MODEL_NAMES = list(model_infos)
+ATTENTION_PRIORS = {"theta": (0.0, 1.0), "gamma": (0.0, 5.0)}
+PRIOR_PROFILE = "wide_theta_0_1_gamma_0_5"
+
+for _name, _info in model_infos.items():
+    if not _name.endswith(("_t", "_g")):
+        continue
+    _parameter = "theta" if _name.endswith("_t") else "gamma"
+    for _params_key, _ranges_key in (
+        ("free_pnames", "free_pranges"),
+        ("free_pnames_ml", "free_pranges_ml"),
+    ):
+        _index = _info[_params_key].index(_parameter)
+        _bounds = list(_info[_ranges_key])
+        _bounds[_index] = ATTENTION_PRIORS[_parameter]
+        _info[_ranges_key] = _bounds
+
+def prior_spec(names):
+    """Exact generating priors for S1/S4 checkpoint compatibility checks."""
+    return {
+        "profile": PRIOR_PROFILE,
+        "free_priors": {
+            name: {parameter: [float(lo), float(hi)]
+                   for parameter, (lo, hi) in zip(
+                       model_infos[name]["free_pnames"],
+                       model_infos[name]["free_pranges"])}
+            for name in names
+        },
+    }
 FEATURE_NAMES = ['v0', 'v1', 'choice0', 'choice1', 'rt', 'ttft0', 'ttft1',
                  'relft0', 'relft1', 'numf', 'numf0', 'numf1', 'fstf0', 'fstf1',
                  'lstf0', 'lstf1', 'switches']

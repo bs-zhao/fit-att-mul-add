@@ -25,7 +25,12 @@ python -u s6_classify_real_data.py --mode test --models aRACE_1 aRACE_2 aRACE_t 
 
 ### Invariants
 
-- `food_equal/tools/model_info.py` is imported directly and never mutated by standard stages.
+- `food_equal/tools/model_info.py` is imported and deep-copied; the source
+  file and its model definitions are never modified by `food_equal_bf`.
+- S1-S6 use theta U(0,1) and gamma U(0,5) (Mul/Add in both families),
+  leaving d, a and fixed model parameters untouched.
+- Checkpoint metadata contains `prior_spec`. Missing or mismatched
+  prior specs cause S2/S3/S5/S6 to refuse loading the checkpoint.
 - Synthetic simulator uses `max_rt=14.5` seconds, `dt=0.001`, `extend_last=500000`,
   `repeat=0`, and the same DDM/RACE Cython dynamics.
 - Trials are excluded for fixation count >=128 and the original 15,000ms
