@@ -55,3 +55,22 @@ simulation failures on nonbinary gaze without changing model dynamics.
 Run `python -m unittest discover -s tests -v` and both
 `experiments/verify_fast_simulation.py --family race|ddm --n-subjects 2`
 preflights on OSC before long training. Only `food_equal_bf` was patched.
+
+## S6 invalid observed choice / reaction time
+
+The original food_equal loader retains trials with nonbinary `response` or
+zero/negative RT calculated from summed fixation duration. Unlike synthetic
+outputs, such empirical trials do not have valid binary choice/RT features.
+`Experiment.real()` now **skips rather than recodes** these trials, and
+also audits negative fixation durations, nonfinite values, and original
+maxT exclusions. All retained observations use the original data.
+
+S6 writes:
+- `real_data/trial_audit.csv`: per-participant input, retained, excluded,
+  breakdown by reason, and >=6 valid trials inclusion.
+- `real_data/excluded_real_trials.csv`: original loaded-CSV row indices,
+  participant IDs, reason, recorded choice, and RT/fixation diagnostics.
+
+The input CSV, S4 training simulation, prior, and checkpoints are unchanged.
+S6 requires no retraining; re-run S6 with the existing classifier models.
+This fix is scoped to `food_equal_bf`; Krajbich code remains unchanged.

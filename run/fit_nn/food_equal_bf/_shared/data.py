@@ -162,19 +162,71 @@ class Experiment:
         self.sha256 = hashlib.sha256(self.path.read_bytes()).hexdigest()
 
     def real(self):
+        """Encode genuine food_equal responses, auditing excluded trials.
+
+        The legacy loader retains trials with a valid fixation-array shape
+        even when response is not binary or summed fixation RT is zero.
+        Such trials cannot be represented by the binary-choice likelihood.
+        Do not invent a response or RT, and do not modify simulations or
+        checkpoints: omit only the invalid *observed* trial, with its reason.
+        """
         ids, records, audit = [], [], []
+        exclusions = []
         for sid, group in self.groups:
             rows = []
-            for _, r in group.iterrows():
-                x = feature([r.v0,r.v1], int(r.choice), float(r.rt), r.arr_pos, r.arr_du)
-                if x is not None:
-                    rows.append(x)
-            audit.append({'subj': sid, 'input_trials':len(group), 'retained_trials':len(rows), 'included':len(rows)>5})
-            if len(rows)>5:
+            reasons = {
+                'invalid_choice': 0,
+                'invalid_rt': 0,
+                'invalid_fixation': 0,
+                'invalid_values': 0,
+                'maxT_excluded': 0,
+            }
+            for row_index, r in group.iterrows():
+                values = np.asarray([r.v0, r.v1], dtype=np.float64)
+                pos = np.asarray(r.arr_pos, dtype=np.int64)
+                dur = np.asarray(r.arr_du, dtype=np.int64)
+                choice = r.choice
+                rt = float(r.rt)
+                if not np.isfinite(choice) or choice not in (0, 1):
+                    reason = 'invalid_choice'
+                elif not np.isfinite(rt) or rt <= 0:
+                    reason = 'invalid_rt'
+                elif (not len(pos) or len(pos) != len(dur)
+                      or np.any(dur < 0)):
+                    reason = 'invalid_fixation'
+                elif not np.isfinite(values).all():
+                    reason = 'invalid_values'
+                else:
+                    x = feature(values, int(choice), rt, pos, dur)
+                    if x is None:
+                        reason = 'maxT_excluded'
+                    else:
+                        rows.append(x)
+                        continue
+                reasons[reason] += 1
+                exclusions.append({
+                    'subj': sid,
+                    'row_index': row_index,
+                    'reason': reason,
+                    'raw_choice': choice,
+                    'raw_rt_s': rt,
+                    'n_fixations': len(pos),
+                    'total_fixation_ms': int(dur.sum()),
+                })
+            audit.append({
+                'subj': sid,
+                'input_trials': len(group),
+                'retained_trials': len(rows),
+                'excluded_trials': len(group)-len(rows),
+                **reasons,
+                'included': len(rows) > 5,
+            })
+            if len(rows) > 5:
                 ids.append(sid)
                 records.append(pack(rows, self.max_trials))
+        self.real_exclusions = exclusions
         if not records:
-            raise ValueError('No participant has >5 retained trials')
+            raise ValueError('No participant has >5 retained valid trials; inspect input CSV and trial exclusions')
         return ids, {k:np.stack([r[k] for r in records]) for k in records[0]}, audit
 
     def simulate(self, model, rng, stats, params=None, group=None, legacy=False):

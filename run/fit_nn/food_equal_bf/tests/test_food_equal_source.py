@@ -1,7 +1,9 @@
 """Food Equal source-of-truth invariants; no BayesFlow training required."""
 import sys
 import unittest
+import tempfile
 from pathlib import Path
+import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import numpy as np
 from _shared.data import (LEGACY, MODEL_NAMES, model_infos, feature, funcs,
@@ -70,6 +72,45 @@ class FoodEqualSourceTests(unittest.TestCase):
         source = funcs.get_summary(funcs.arr2tp(p, d), .001)
         np.testing.assert_array_equal(np.asarray(observed, np.float32),
                                       np.asarray(source, np.float32))
+
+    def test_real_data_skips_and_audits_invalid_trials(self):
+        """No response/zero-RT trials are excluded, not recoded."""
+        from _shared.data import Experiment
+        rows = []
+        def record(subj, choice=1, durations="[200, 300]", positions="[0, 1]"):
+            rows.append(dict(subj=subj, v0=4, v1=7, response=choice,
+                             arr_ml3_left=positions, arr_ml3_time=durations))
+        for i in range(8):
+            record(1, choice=i % 2)
+        record(1, choice=-1)
+        record(1, choice=2)
+        record(1, choice=0, durations="[0, 0]")
+        record(1, choice=0, durations="[250, -10]")
+        record(1, choice=1, durations="[7500, 7500]")
+        for i in range(5):
+            record(2, choice=i % 2)
+        record(2, choice=-1)
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / 'trial_eye.csv'
+            pd.DataFrame(rows).to_csv(file, index=False)
+            ex = Experiment(file)
+            ids, raw, audit = ex.real()
+        self.assertEqual(ids, [1])
+        self.assertEqual(raw['trials'].shape[0], 1)
+        self.assertEqual(int(raw['summary_mask'][0].sum()), 8)
+        self.assertEqual(audit[0]['input_trials'], 13)
+        self.assertEqual(audit[0]['retained_trials'], 8)
+        self.assertEqual(audit[0]['excluded_trials'], 5)
+        self.assertEqual(audit[0]['invalid_choice'], 2)
+        self.assertEqual(audit[0]['invalid_rt'], 1)
+        self.assertEqual(audit[0]['invalid_fixation'], 1)
+        self.assertEqual(audit[0]['maxT_excluded'], 1)
+        self.assertTrue(audit[0]['included'])
+        self.assertEqual(audit[1]['retained_trials'], 5)
+        self.assertFalse(audit[1]['included'])
+        self.assertEqual(len(ex.real_exclusions), 6)
+        self.assertEqual({v['reason'] for v in ex.real_exclusions},
+                         {'invalid_choice','invalid_rt','invalid_fixation','maxT_excluded'})
 
     def test_unchanged_source_parameters_are_not_mutated(self):
         info = model_infos["aRACE_t"]

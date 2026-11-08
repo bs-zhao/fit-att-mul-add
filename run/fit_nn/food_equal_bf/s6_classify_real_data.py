@@ -23,7 +23,21 @@ def main():
     ids, raw, audit = ex.real()
     dest = folder / 'real_data'
     dest.mkdir(exist_ok=True)
-    pd.DataFrame(audit).to_csv(dest / 'trial_audit.csv', index=False)
+    audit_frame = pd.DataFrame(audit)
+    audit_frame.to_csv(dest / 'trial_audit.csv', index=False)
+    # Row-level provenance for excluded real trials; source data are untouched.
+    exclusion_columns = (
+        'subj', 'row_index', 'reason', 'raw_choice', 'raw_rt_s',
+        'n_fixations', 'total_fixation_ms'
+    )
+    excluded = pd.DataFrame(ex.real_exclusions, columns=exclusion_columns)
+    excluded.to_csv(dest / 'excluded_real_trials.csv', index=False)
+    reason_counts = excluded['reason'].value_counts().to_dict()
+    print('[REAL TRIAL AUDIT] input=', int(audit_frame['input_trials'].sum()),
+          'retained=', int(audit_frame['retained_trials'].sum()),
+          'excluded=', len(excluded),
+          'participants_included=', len(ids),
+          'reasons=', reason_counts, flush=True)
     # Uniform classifier training prior; reference category is names[0].
     estimates = est.estimate(conditions=raw, model_prior=np.full(k, 1/k))
     logbf = np.asarray(estimates['log_bayes_factors'])
