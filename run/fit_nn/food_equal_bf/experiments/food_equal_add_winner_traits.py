@@ -291,7 +291,7 @@ def fit_choice_style(trials, scales):
     yields comparable subject coefficients. This is descriptive, not causal.
     Penalty 0.5 * 0.5 * sum(beta_slopes^2) avoids complete separation.
     """
-    x = trials[['value_difference0minus1', 'gaze_difference0minus1']].to_numpy(dtype=float)
+    x = trials[['value_difference0minus1', 'gaze_difference0minus1']].to_numpy(dtype=float, copy=True)
     x[:, 1] = np.nan_to_num(x[:, 1], nan=0.0)
     interaction = x[:, 0] * x[:, 1]
     raw = np.column_stack((x, interaction))
