@@ -23,6 +23,8 @@ import ctypes
 import math
 import multiprocessing as mp
 import os
+# Set before any _shared import; worker interpreters inherit this flag.
+os.environ["ATT_BF_VALUE_NORMALIZATION"] = "dataset_max"
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
