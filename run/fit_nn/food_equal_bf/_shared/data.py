@@ -176,7 +176,10 @@ class Experiment:
             self.value_min = float(np.min(raw[finite]))
             if not np.isfinite(self.value_max) or self.value_max <= 0:
                 raise ValueError(f"Invalid dataset maximum: {self.value_max}")
-            self.df.loc[:, ["v0", "v1"]] = raw / self.value_max
+            # Assign each column directly so pandas replaces its integer dtype
+            # with float64 (newer pandas rejects float values via .loc on int64).
+            self.df["v0"] = raw[:, 0] / self.value_max
+            self.df["v1"] = raw[:, 1] / self.value_max
             scaled = self.df[["v0", "v1"]].to_numpy(dtype=np.float64)
             if not np.isclose(np.max(scaled[np.isfinite(scaled)]), 1.0,
                               rtol=1e-12, atol=1e-12):
