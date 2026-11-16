@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import hashlib
+import os
 from copy import deepcopy
 import numpy as np
 
@@ -38,7 +39,7 @@ for _name, _info in model_infos.items():
 
 def prior_spec(names):
     """Exact generating priors for S1/S4 checkpoint compatibility checks."""
-    return {
+    result = {
         "profile": PRIOR_PROFILE,
         "free_priors": {
             name: {parameter: [float(lo), float(hi)]
@@ -48,6 +49,13 @@ def prior_spec(names):
             for name in names
         },
     }
+    if VALUE_NORMALIZATION == "dataset_max":
+        result["value_normalization"] = {
+            "method": "dataset_max", "columns": ["v0", "v1"],
+            "network_feature_scale": [1.0, 1.0],
+        }
+    return result
+
 FEATURE_NAMES = ['v0', 'v1', 'choice0', 'choice1', 'rt', 'ttft0', 'ttft1',
                  'relft0', 'relft1', 'numf', 'numf0', 'numf1', 'fstf0', 'fstf1',
                  'lstf0', 'lstf1', 'switches']
@@ -57,6 +65,13 @@ MAX_LEN_NF = int(maxT.MAX_LEN_NF)  # 128 fixation segments
 MAX_RT = 14.5  # food_equal/s1_gen1w.py; unchanged simulator cutoff
 SCALE = np.array([10,10,1,1,MAX_LEN_RT/1000,MAX_LEN_RT/1000,MAX_LEN_RT/1000,
                   1,1,MAX_LEN_NF,MAX_LEN_NF,MAX_LEN_NF,1,1,1,1,MAX_LEN_NF], np.float32)
+# Opt-in only: all historical experiments remain on original raw value scales.
+VALUE_NORMALIZATION = os.environ.get("ATT_BF_VALUE_NORMALIZATION", "none")
+if VALUE_NORMALIZATION not in ("none", "dataset_max"):
+    raise ValueError("Unknown ATT_BF_VALUE_NORMALIZATION mode")
+if VALUE_NORMALIZATION == "dataset_max":
+    SCALE[:2] = 1.0  # Normalized v0, v1 arrive at the network in [0, 1].
+
 
 def fast_fixation_summary(pos, dur):
     """Exactly reproduce get_summary(arr2tp(pos,dur), .001) without ms expansion.
@@ -146,6 +161,26 @@ class Experiment:
     def __init__(self, path):
         self.path = Path(path).resolve()
         self.df = funcs.load_food_data(self.path)
+        self.value_normalization = VALUE_NORMALIZATION
+        self.value_max = None
+        self.value_min = None
+        if VALUE_NORMALIZATION == "dataset_max":
+            # One common denominator for BOTH option-value columns and all
+            # participants/trials in this dataset, computed before trial masks.
+            # It is used by empirical simulator designs AND real-data features.
+            raw = self.df[["v0", "v1"]].to_numpy(dtype=np.float64, copy=True)
+            finite = np.isfinite(raw)
+            if not finite.any():
+                raise ValueError("No finite option values for normalization")
+            self.value_max = float(np.max(raw[finite]))
+            self.value_min = float(np.min(raw[finite]))
+            if not np.isfinite(self.value_max) or self.value_max <= 0:
+                raise ValueError(f"Invalid dataset maximum: {self.value_max}")
+            self.df.loc[:, ["v0", "v1"]] = raw / self.value_max
+            scaled = self.df[["v0", "v1"]].to_numpy(dtype=np.float64)
+            if not np.isclose(np.max(scaled[np.isfinite(scaled)]), 1.0,
+                              rtol=1e-12, atol=1e-12):
+                raise AssertionError("Normalized maximum is not exactly 1")
         self.groups = list(self.df.groupby('subj', sort=False))
         # Preconvert the reusable empirical value/fixation schedules once.
         # Cython internally copies positions/durations before mutating them.
