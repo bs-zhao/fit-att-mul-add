@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from consistency import conditional_probabilities, summarize
+from algebra import conditional_probabilities, summarize
 
 class TestConditioning(unittest.TestCase):
     def test_joint_conditional_recovers_exact_four_way(self):
