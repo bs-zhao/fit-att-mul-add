@@ -109,3 +109,38 @@ The experiments intentionally change both the input value scale and
 the prior distribution relative to the historical G12 runs; do not
 attribute differences solely to gamma. The selected prior must also
 be evaluated by S5 recovery, calibration and prior-predictive checks.
+
+
+## Genuine parameter recovery (S1 and S2; distinct from S5 model recovery)
+
+Parameter recovery is NOT possible from the four-classifier's class-probability
+head. To recover continuous generating parameters, train a separate
+BayesFlow conditional posterior for each model and run held-out S2 recovery.
+The wrapper below uses the same dataset-max value normalization and
+`d U(1,50), a U(.5,5), theta U(0,1), gamma U(0,2)` as the
+four-classifier G2 experiment; it never changes existing classifiers.
+
+```bash
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE
+git pull --ff-only
+for model in aDDM_1 aDDM_2 aDDM_t aDDM_g aRACE_1 aRACE_2 aRACE_t aRACE_g; do
+    sbatch --account=PAS2943 --gres=gpu:1 --time=100:00:00 --mem=32G \
+      --job-name="Food-G2-PR-${model}" \
+      --wrap="cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/food_equal_bf && \
+      export KERAS_BACKEND=torch && \
+      python -u experiments/normalized_parameter_recovery.py --stage s1 --model ${model} --mode formal && \
+      python -u experiments/normalized_parameter_recovery.py --stage s2 --model ${model} --mode formal --n-test 1000 --draws 1000"
+done
+```
+
+Recovery artifacts are saved in the new normalized-value output
+directory under `<model>/formal/diagnostics/`: `recovery.npz`,
+`parameter_recovery_metrics.csv`, `coverage.csv`, `sbc_ranks.csv`,
+`recovery_sbc.png` and posterior-correlation diagnostics.
+
+For the S5 classifier model recovery, reuse trained four-classifiers with
+`normalized_value_prior_sweep.py --stage s5 --family ddm` and likewise
+`--family race`. For RACE-Add generated data tested using the
+four-DDM classifier (and additionally the four-RACE classifier on
+identical simulated datasets), use
+`normalized_value_prior_sweep.py --stage cross --generator aRACE_g --n 1000`.
