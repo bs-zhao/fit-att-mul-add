@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Install numpy Cython pandas and compiler build system
         run: python -m pip install "numpy<2" "pandas>=2" "Cython>=3" setuptools
+      - name: Check variant Slurm launch shell syntax
+        run: bash -n run/fit_nn/tavares2017_bf_v2/submit_variant.sh
       - name: Syntax validation for v2 Python files
         run: python -m compileall -q run/fit_nn/tavares2017_bf_v2
       - name: Verify variant conversion tests

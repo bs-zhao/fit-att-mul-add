@@ -26,6 +26,12 @@ jobs:
         run: python -m pip install numpy pandas
       - name: Rebuild dataset from public original source
         run: python -u run/fit_nn/tavares2017_bf/prepare_data.py
+      - name: Test posterior conditioning identity without BayesFlow
+        run: python -m unittest discover -s run/fit_nn/tavares2017_bf/next_steps/tests -v
+      - name: Verify cross-dataset model and network definitions
+        run: python run/fit_nn/tavares2017_bf/next_steps/audit_alignment.py
+      - name: Recheck all eye intervals and quality metrics
+        run: python run/fit_nn/tavares2017_bf/next_steps/audit_original.py
       - name: Audit real-data representation and model prior shapes
         env:
           ATT_BF_VALUE_NORMALIZATION: dataset_max
