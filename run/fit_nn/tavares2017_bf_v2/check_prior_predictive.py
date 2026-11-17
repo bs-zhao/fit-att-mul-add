@@ -33,11 +33,24 @@ def main():
     common.environment(args.seed)
     path=common.ROOT / "data/tavares2017_v2" / args.profile / "trial_eye.csv"
     ex=common.Experiment(path)
+    # Use the same input-aware normalization audit as formal S4.
+    # Without this, an otherwise normalized preflight wrote a null audit.
+    sweep.NORMALIZATION_AUDIT = sweep.normalization_audit(path)
+    real_ids, real_features, real_audit = ex.real()
+    observed_trials = np.asarray(real_features["summary_mask"], dtype=bool).sum(axis=1)
     report={
         "profile":args.profile,"input_sha256":ex.sha256,
         "n_per_model":args.n_per_model,
         "model_prior_spec":sweep.prior_spec(common.MODEL_NAMES),
         "scale":SCALE.tolist(),
+        "real_subject_count":len(real_ids),
+        "real_retained_n_trials":{
+            "mean":float(np.mean(observed_trials)),
+            "median":float(np.median(observed_trials)),
+            "min":int(np.min(observed_trials)),
+            "max":int(np.max(observed_trials)),
+            "counts":observed_trials.tolist(),
+        },
         "models":{},
     }
     for j,model in enumerate(common.MODEL_NAMES):
@@ -55,6 +68,8 @@ def main():
             "sim_stats":stats,
             "included_trials":int(mask.sum()),
             "mean_trials_per_subject":float(np.mean(per_subject)),
+            "sd_trials_per_subject":float(np.std(per_subject, ddof=0)),
+            "trials_per_subject":per_subject.tolist(),
             "mean_rt_seconds":float(np.mean(rt)),
             "median_rt_seconds":float(np.median(rt)),
             "p95_rt_seconds":float(np.quantile(rt,.95)),
@@ -67,6 +82,9 @@ def main():
     dest.mkdir(parents=True,exist_ok=True)
     (dest/"prior_predictive.json").write_text(json.dumps(report,indent=2)+"\n")
     print("[READY]",dest/"prior_predictive.json",flush=True)
+    print("[IMPORTANT] Compare simulated model-dependent retained n_trials to observed n_trials; "
+          "the 17-feature BF input also contains n_trials, so variable exclusion rates "
+          "may act as an unintended model identifier.", flush=True)
 
 
 if __name__=="__main__":
