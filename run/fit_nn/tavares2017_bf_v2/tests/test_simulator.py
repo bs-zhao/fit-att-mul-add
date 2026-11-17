@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[4]
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(HERE))
 sys.path.insert(0,str(ROOT / "packages/c_bifood"))
-from _shared.data import Experiment, feature, VARIANTS, model_infos
+from _shared.data import Experiment, feature, feature_reject_reason, VARIANTS, model_infos
 from c_bifood import sim_trial_aDDM as old_ddm, sim_trial_aRACE as old_race
 from c_tavares_fulltimeline import sim_trial_aDDM as new_ddm, sim_trial_aRACE as new_race
 
@@ -66,6 +66,17 @@ class Simulators(unittest.TestCase):
             else:
                 np.testing.assert_array_equal(result[1][0][0][:400],np.zeros(400),err_msg=m)
                 np.testing.assert_array_equal(result[1][0][1][:400],np.zeros(400),err_msg=m)
+
+    def test_feature_rejection_reason_accounting(self):
+        self.assertEqual(feature_reject_reason(
+            np.array([-1,-1]),np.array([100,200])), "excluded_no_item_gaze")
+        self.assertEqual(feature_reject_reason(
+            np.zeros(128,dtype=np.int64),np.ones(128,dtype=np.int64)),
+            "excluded_fixation_count")
+        self.assertEqual(feature_reject_reason(
+            np.array([1]),np.array([50000])), "excluded_rt_limit")
+        self.assertIsNone(feature_reject_reason(
+            np.array([-1,1,0]),np.array([50,100,150])))
 
     def test_real_encoding_and_masks(self):
         for name in ("active_thomas_all","full_thomas_all",

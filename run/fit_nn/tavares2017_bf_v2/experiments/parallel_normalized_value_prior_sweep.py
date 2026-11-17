@@ -36,8 +36,9 @@ if str(HERE) not in sys.path:
 
 _WORKER_EX = None
 _WORKER_MODEL_NAMES = None
-_STATS_KEYS = ("trials", "nonhits", "maxT_excluded", "rejected_subjects",
-               "accepted_subjects")
+_STATS_KEYS = ("trials", "nonhits", "maxT_excluded",
+               "excluded_no_item_gaze", "excluded_fixation_count",
+               "excluded_rt_limit", "rejected_subjects", "accepted_subjects")
 
 
 def _worker_init(input_path, infos, input_hash):

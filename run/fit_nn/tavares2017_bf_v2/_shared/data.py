@@ -105,15 +105,30 @@ def reconstruct_fixations(pos, dur, rt, ndt=0.0):
     return pos[:index + 1], out_dur
 
 
+def feature_reject_reason(pos, dur):
+    """Explain why a *simulated or observed* trial failed the feature limit.
+
+    The legacy 'maxT_excluded' aggregate also included early neutral-state
+    decisions and fixation count filtering; do not interpret it as RT only.
+    """
+    pos = np.asarray(pos)
+    dur = np.asarray(dur)
+    if not np.any((pos == 0) | (pos == 1)):
+        return "excluded_no_item_gaze"
+    if len(pos) >= 128:
+        return "excluded_fixation_count"
+    if np.ceil(dur.sum()/3) >= np.floor((MAX_RT*1000)/3):
+        return "excluded_rt_limit"
+    return None
+
+
 def feature(values, choice, rt, pos, dur, legacy=False):
     pos, dur = np.asarray(pos, dtype=np.int64), np.asarray(dur, dtype=np.int64)
     if not len(pos) or len(pos) != len(dur) or np.any(dur < 0) or not np.isin(pos, [-1,0,1]).all():
         raise ValueError('Invalid binary fixation sequence')
     if choice not in (0, 1) or not np.isfinite(rt) or rt <= 0:
         raise ValueError('Invalid choice/RT')
-    if not np.any((pos == 0) | (pos == 1)):
-        return None
-    if len(pos) >= 128 or np.ceil(dur.sum()/3) >= np.floor((MAX_RT*1000)/3):
+    if feature_reject_reason(pos, dur) is not None:
         return None
     summary = (funcs.get_summary(funcs.arr2tp(pos, dur), .001)
                if legacy else fast_fixation_summary(pos, dur))
@@ -254,14 +269,23 @@ class Experiment:
                     orig_pos, orig_dur, rt, ndt=params.get('ndt', 0.0))
             x = feature(values, int(choice), float(rt), pos, dur, legacy=legacy)
             if x is None:
+                # Historical aggregate is maintained for parity with S4/S5,
+                # but its components are now audited separately.
                 stats['maxT_excluded'] += 1
+                reason = feature_reject_reason(pos, dur)
+                if reason is None:
+                    raise AssertionError("Feature rejected without a recorded reason")
+                stats[reason] = stats.get(reason, 0) + 1
             else:
                 rows.append(x)
         return params, rows
 
     def simulator(self, bf, model, seed, model_only=False):
         rng = np.random.default_rng(seed)
-        stats = dict(trials=0, nonhits=0, maxT_excluded=0, rejected_subjects=0, accepted_subjects=0)
+        stats = dict(trials=0, nonhits=0, maxT_excluded=0,
+                     excluded_no_item_gaze=0, excluded_fixation_count=0,
+                     excluded_rt_limit=0,
+                     rejected_subjects=0, accepted_subjects=0)
         def one():
             for _ in range(100):
                 params, rows = self.simulate(model, rng, stats)

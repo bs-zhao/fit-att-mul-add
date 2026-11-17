@@ -64,6 +64,12 @@ def main():
             raise RuntimeError(f"{model} nonfinite or empty")
         rt=trials[:,:,4][mask] * float(SCALE[4])
         per_subject=mask.sum(1)
+        rejection_reasons = (
+            stats["excluded_no_item_gaze"] + stats["excluded_fixation_count"]
+            + stats["excluded_rt_limit"]
+        )
+        if rejection_reasons != stats["maxT_excluded"]:
+            raise AssertionError(f"{model}: exclusion components do not sum to aggregate")
         report["models"][model]={
             "sim_stats":stats,
             "included_trials":int(mask.sum()),
