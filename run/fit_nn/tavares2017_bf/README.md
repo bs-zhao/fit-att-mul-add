@@ -95,8 +95,8 @@ on one allocated GPU. Example (replace account and working directory):
 cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/tavares2017_bf
 for family in ddm race all; do
     sbatch --account=PDE0114 --gres=gpu:1 --cpus-per-task=9 --time=100:00:00 --mem=32G \
-      --job-name="Tavares-G2-\${family}" \
-      --wrap="cd $PWD && export KERAS_BACKEND=torch OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 && python -u experiments/parallel_normalized_value_prior_sweep.py --sim-workers 8 --stage s4 --family \${family} --mode formal --batch-size 8 --validation 64"
+      --job-name="Tavares-G2-${family}" \
+      --wrap="cd $PWD && export KERAS_BACKEND=torch OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 && python -u experiments/parallel_normalized_value_prior_sweep.py --sim-workers 8 --stage s4 --family ${family} --mode formal --batch-size 8 --validation 64"
 done
 ```
 
