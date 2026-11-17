@@ -8,7 +8,6 @@ os.environ.setdefault("KERAS_BACKEND", "torch")
 os.environ.setdefault("MPLBACKEND", "Agg")
 os.environ["ATT_BF_VALUE_NORMALIZATION"] = "dataset_max"
 import argparse
-import csv
 import json
 import sys
 from pathlib import Path
@@ -25,7 +24,7 @@ RACE = sweep.FAMILIES["race"]
 FAMILIES = {"ddm": DDM, "race": RACE}
 
 
-from algebra import conditional_probabilities, summarize
+from algebra import conditional_probabilities, summarize, write_union_csv
 
 
 def _batched_prob(estimator, raw, names, batch_size):
@@ -75,6 +74,18 @@ def _evaluate(label, ids, truth, raw, estimators, names, batch_size):
                 m: summarize([r for r in rows if r["family"] == fam and r["generator"] == m])
                 for m in names["all"]
             }
+            same = [r for r in rows if r["family"] == fam and
+                    r["generator"] in names[fam]]
+            other = [r for r in rows if r["family"] == fam and
+                     r["generator"] not in names[fam]]
+            aggregate[fam]["correct_generator_family"] = summarize(same)
+            aggregate[fam]["other_generator_family"] = summarize(other)
+        qualified = [r for r in rows if r["family"] == fam and
+                     r["joint_family_mass"] >= .1]
+        aggregate[fam]["family_mass_ge_0p1"] = (
+            summarize(qualified) if qualified else None
+        )
+        aggregate[fam]["family_mass_ge_0p1_n"] = len(qualified)
     return rows, aggregate
 
 
@@ -139,12 +150,10 @@ def main():
 
 
 def _write_csv(path, rows):
-    if not rows:
-        raise ValueError("Cannot save empty CSV")
-    with path.open("w", newline="", encoding="utf8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    # Families have different model-specific columns: never infer the schema
+    # from rows[0], since it would exclude all RACE model probability columns.
+    # Atomic save avoids misleading partial datasets when a run fails.
+    write_union_csv(path, rows)
 
 
 if __name__ == "__main__":

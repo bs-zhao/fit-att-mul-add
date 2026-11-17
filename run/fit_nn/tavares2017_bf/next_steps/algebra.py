@@ -27,3 +27,28 @@ def summarize(rows):
     }
 
 
+
+def write_union_csv(path, rows):
+    """Save heterogeneous dict records atomically with the ordered union of keys."""
+    import csv
+    import os
+    import tempfile
+    from pathlib import Path
+    path = Path(path)
+    if not rows:
+        raise ValueError("Cannot save empty CSV")
+    columns = list(dict.fromkeys(key for row in rows for key in row))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile("w", newline="", encoding="utf-8",
+                dir=path.parent, prefix=path.name + ".", suffix=".tmp",
+                delete=False) as handle:
+            tmp = Path(handle.name)
+            writer = csv.DictWriter(handle, fieldnames=columns)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)

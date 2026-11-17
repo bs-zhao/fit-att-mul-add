@@ -1,11 +1,13 @@
 """Unit tests for Bayes-consistency algebra; no GPU/BayesFlow required."""
 import sys
+import csv
+import tempfile
 import unittest
 from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from algebra import conditional_probabilities, summarize
+from algebra import conditional_probabilities, summarize, write_union_csv
 
 class TestConditioning(unittest.TestCase):
     def test_joint_conditional_recovers_exact_four_way(self):
@@ -21,6 +23,23 @@ class TestConditioning(unittest.TestCase):
     def test_zero_mass_rejected(self):
         with self.assertRaises(ValueError):
             conditional_probabilities([[0,0,1]], ["x","y"], ["x","y","z"])
+
+    def test_heterogeneous_family_columns_are_preserved(self):
+        # Reproduces the failure after 256 DDM rows from the uploaded zip.
+        rows = [
+            {"family":"ddm","subj":"s1","four__aDDM_1":.7},
+            {"family":"race","subj":"s1","four__aRACE_1":.8},
+        ]
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "joint.csv"
+            write_union_csv(output, rows)
+            with output.open(newline="",encoding="utf-8") as f:
+                saved = list(csv.DictReader(f))
+            self.assertEqual(len(saved), 2)
+            self.assertEqual(saved[0]["four__aDDM_1"],"0.7")
+            self.assertEqual(saved[1]["four__aRACE_1"],"0.8")
+            self.assertEqual(saved[0]["four__aRACE_1"],"")
+            self.assertEqual(saved[1]["four__aDDM_1"],"")
 
 if __name__ == "__main__":
     unittest.main()
