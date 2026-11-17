@@ -79,6 +79,15 @@ model or trial counts.
 
 ## 2. Train the two four-way classifiers and one eight-way classifier
 
+One-command Slurm submission (queues S4 plus S5/S6 after successful S4):
+
+```bash
+bash submit_three.sh
+```
+
+Override Slurm account or memory if needed: `ACCOUNT=PAS2943 MEM=64G bash submit_three.sh`.
+
+
 Run these in the directory containing this README, after preparation:
 
 ```bash
