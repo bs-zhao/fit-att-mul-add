@@ -99,6 +99,18 @@ The zero-neutral-drift/noise-active construction is a hypothesis for off-item
 processing; it is not presented as the unique interpretation of all neutral
 states in the original task.
 
+## Preflight prior predictive test (CPU / no training)
+
+Before launching S4 on any V2 profile, check the simulator's hit rate,
+retained trials and RT distribution under all eight G2 priors:
+
+~~~bash
+python -u check_prior_predictive.py --profile full_thomas_qc --n-per-model 4
+~~~
+
+Output: outputs/tavares2017_bf_v2/full_thomas_qc/preflight/prior_predictive.json.
+Inspect nonhit_rate and mean/quantile RT before spending GPU time.
+
 ## Stage C: S4 training, S5 recovery, S6 real subjects
 
 Run in run/fit_nn/tavares2017_bf_v2.
@@ -177,3 +189,23 @@ outputs/tavares2017_bf_v2/PROFILE/prior_sensitivity/
 For each classifier S4 writes best.keras, metadata.json, history.csv;
 S5 writes diagnostics/; S6 writes real_data/model_probabilities.csv,
 real_data/pairwise_log_bayes_factors.csv and trial_audit.csv.
+
+## Post-training comparison report (CPU, read-only)
+
+After one or more profiles have completed S5 and S6:
+
+~~~bash
+python -u compare_results.py --include-baseline
+~~~
+
+This reads real-data PMPs and S5 recovery scores without loading the
+neural networks. It saves:
+
+~~~text
+outputs/tavares2017_bf_v2/summary/model_summary.csv
+outputs/tavares2017_bf_v2/summary/four_vs_eight_real_consistency.csv
+outputs/tavares2017_bf_v2/summary/between_profile_differences.csv
+~~~
+
+Incomplete profiles are skipped with a warning. Baseline-versus-V2
+comparisons are explicitly flagged as cross_version_not_controlled.
