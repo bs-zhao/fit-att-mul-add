@@ -10,7 +10,7 @@ import json
 import math
 from collections import Counter
 from pathlib import Path
-from final_training.plan import (OUTPUT, ROOT, INPUT, FAMILIES,
+from plan import (OUTPUT, ROOT, INPUT, FAMILIES,
                                  classifier_dir, verify_final_input)
 
 BASELINE = (ROOT / "outputs/tavares2017_bf/prior_sensitivity/"
