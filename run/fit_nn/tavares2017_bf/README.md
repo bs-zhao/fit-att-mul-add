@@ -1,5 +1,15 @@
 # Tavares2017 Experiment 1: G2 matched-prior BayesFlow
 
+> **For the next retraining (new canonical data):** the single validated
+> preprocessing standard is documented in
+> [final_preprocessing/README.md](final_preprocessing/README.md).
+> It prepares `data/tavares2017_final/trial_eye.csv` with the original
+> >50% off-item QC rule and existing feature limits (30,162 trials).
+> The instructions below document the **unchanged previous baseline**;
+> do not point its original S4 output directory at the new file until
+> the separate Step-2 training/output launcher is prepared.
+
+
 Independent third-data-set implementation of the Food Equal / Krajbich2010
 **eight identical c_bifood DDM/RACE models**, with exactly the same G2
 dataset-max value normalizer, 17 trial features, SetTransformer/CouplingFlow,
