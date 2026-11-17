@@ -45,6 +45,15 @@ jobs:
           assert m["original_reproduced_to_thomas"]["mismatch_count"] == 0
           print("FINAL TAVARES PASSED:",m["prepared_sha256"])
           PY
+      - name: Check final training shell syntax
+        run: bash -n run/fit_nn/tavares2017_bf/final_training/submit.sh
+      - name: Validate isolated G2 training paths and final data with pure-Python tests
+        run: python -m unittest discover -s run/fit_nn/tavares2017_bf/final_training/tests -v
+      - name: Check all three planned final S4 jobs without training
+        run: |
+          python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family ddm --dry-run
+          python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family race --dry-run
+          python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family all --dry-run
       - name: Test posterior conditioning identity without BayesFlow
         run: python -m unittest discover -s run/fit_nn/tavares2017_bf/next_steps/tests -v
       - name: Verify cross-dataset model and network definitions
