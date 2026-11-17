@@ -18,6 +18,8 @@ jobs:
           python-version: "3.11"
       - name: Compile all Tavares Python files
         run: python -m compileall -q run/fit_nn/tavares2017_bf
+      - name: Check Slurm launcher shell syntax
+        run: bash -n run/fit_nn/tavares2017_bf/submit_three.sh
       - name: Run fixture-level unit tests
         run: python -m unittest discover -s run/fit_nn/tavares2017_bf/tests -v
       - name: Install input adapter dependencies
