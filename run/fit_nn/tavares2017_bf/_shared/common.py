@@ -144,6 +144,12 @@ def train(args, classifier=False):
                batch_size=args.batch_size or (4 if args.mode=='test' else 8))
     validation = validation_sim.sample(args.validation or (8 if args.mode=='test' else 64))
     w = workflow(simulator,None if classifier else args.model,model_names=names)
+    # Opt-in only: final_training changes patience without changing the
+    # underlying model, optimizer or any historical default.
+    lr_patience = int(os.environ.get('ATT_BF_CLASSIFIER_LR_PATIENCE', '4')) if classifier else 8
+    early_patience = int(os.environ.get('ATT_BF_CLASSIFIER_EARLY_PATIENCE', '10')) if classifier else 20
+    if lr_patience < 1 or early_patience <= lr_patience:
+        raise ValueError('Classifier patience must satisfy 1 <= LR patience < early patience')
     dump(folder/'metadata.json',dict(bayesflow=version('bayesflow'), seed=args.seed,
          prior_spec=prior_spec(names if classifier else [args.model]),
          model_names=names if classifier else MODEL_NAMES, model=None if classifier else args.model,
@@ -151,10 +157,7 @@ def train(args, classifier=False):
          input_sha256=ex.sha256, max_trials=ex.max_trials, features=FEATURE_NAMES,
          feature_scale=SCALE.tolist(), config=cfg,
          model_prior=[1/len(names)]*len(names) if classifier else None,
-         reduce_lr_patience=4 if classifier else 8,
-         early_stopping_patience=10 if classifier else 20))
-    lr_patience = 4 if classifier else 8
-    early_patience = 10 if classifier else 20
+         reduce_lr_patience=lr_patience, early_stopping_patience=early_patience))
     callbacks=[AtomicBest(folder/'best.keras'), keras.callbacks.CSVLogger(str(folder/'history.csv')),
                keras.callbacks.ReduceLROnPlateau(monitor='val_loss',factor=.5,patience=lr_patience,min_lr=1e-6),
                keras.callbacks.EarlyStopping(monitor='val_loss',patience=early_patience,min_delta=1e-4,restore_best_weights=True)]
