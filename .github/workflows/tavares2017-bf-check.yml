@@ -26,6 +26,25 @@ jobs:
         run: python -m pip install numpy pandas
       - name: Rebuild dataset from public original source
         run: python -u run/fit_nn/tavares2017_bf/prepare_data.py
+      - name: Verify final preprocessing fixtures
+        run: python -m unittest discover -s run/fit_nn/tavares2017_bf/final_preprocessing/tests -v
+      - name: Build final Tavares dataset and compare to independent Thomas 2019 reference
+        run: python -u run/fit_nn/tavares2017_bf/final_preprocessing/prepare_final.py --fetch-thomas-reference
+      - name: Verify final trial counts and exact downstream 17-feature conversion
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f = Path("data/tavares2017_final")
+          m = json.loads((f/"prep_manifest.json").read_text())
+          assert m["audited"]["final_trials"] == 30162, m
+          assert m["audited"]["excluded_by_reason"]["offitem_qc_gt50pct"] == 1691
+          assert m["audited"]["excluded_by_reason"]["feature_rt_limit"] == 1
+          assert m["bayesflow_feature_check"]["retained_trials"] == 30162
+          assert m["original_reproduced_to_thomas"]["checked"]
+          assert m["original_reproduced_to_thomas"]["mismatch_count"] == 0
+          print("FINAL TAVARES PASSED:",m["prepared_sha256"])
+          PY
       - name: Test posterior conditioning identity without BayesFlow
         run: python -m unittest discover -s run/fit_nn/tavares2017_bf/next_steps/tests -v
       - name: Verify cross-dataset model and network definitions
