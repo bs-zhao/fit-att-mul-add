@@ -54,6 +54,10 @@ jobs:
           python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family ddm --dry-run
           python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family race --dry-run
           python -u run/fit_nn/tavares2017_bf/final_training/run.py --stage s4 --family all --dry-run
+      - name: Check cross-version S6 launcher shell syntax
+        run: bash -n run/fit_nn/tavares2017_bf/final_training/submit_cross.sh
+      - name: Validate cross-version pinned data, 2x2 math and synthetic report
+        run: python -m unittest discover -s run/fit_nn/tavares2017_bf/final_training/tests -p 'test_cross_inference.py' -v
       - name: Test posterior conditioning identity without BayesFlow
         run: python -m unittest discover -s run/fit_nn/tavares2017_bf/next_steps/tests -v
       - name: Verify cross-dataset model and network definitions
