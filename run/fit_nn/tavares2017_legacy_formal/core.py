@@ -4,6 +4,8 @@ The behavior, eye clock, 17 BF features and eight Cython models are imported
 from the legacy Tavares2017 BF implementation. Do not refactor them here.
 """
 import argparse
+import csv
+import math
 import hashlib
 import json
 import os
@@ -100,6 +102,35 @@ def verified_s4_checkpoint(family,mode="formal"):
         raise ValueError(f"Checkpoint does not match frozen legacy design: {folder}")
     return folder
 
+def audit_training(folder,planned_epochs):
+    """Read training log after S4; record observable stopping evidence."""
+    path=folder/"history.csv"
+    if not path.is_file() or not (folder/"best.keras").is_file():
+        raise FileNotFoundError("S4 did not save full training log + best checkpoint")
+    with path.open(newline="",encoding="utf8") as f:
+        hist=list(csv.DictReader(f))
+    if not hist:
+        raise RuntimeError("Empty S4 training history")
+    losses=[float(r["val_loss"]) for r in hist]
+    if not all(math.isfinite(v) for v in losses):
+        raise RuntimeError("Nonfinite validation loss during S4")
+    epoch_best=min(range(len(losses)),key=lambda i:losses[i])+1
+    record={
+        "epochs_completed":len(hist),
+        "epochs_requested":planned_epochs,
+        "best_epoch":epoch_best,
+        "best_validation_loss":losses[epoch_best-1],
+        "final_validation_loss":losses[-1],
+        "early_stop_before_maximum":len(hist)<planned_epochs,
+        "model_saved":True,
+        "interpretation":"Early stopping and finite validation loss do not prove global convergence.",
+    }
+    (folder/"formal_training_audit.json").write_text(
+        json.dumps(record,indent=2)+"\n",encoding="utf8")
+    print("[TRAINING AUDIT]",json.dumps(record),flush=True)
+    return record
+
+
 def run(stage,args):
     args_check(args,stage)
     info=validate_input()
@@ -154,4 +185,5 @@ def run(stage,args):
             or meta["config"]["batch_size"]!=args.batch_size
             or meta["early_stopping_patience"]!=args.early_patience):
             raise RuntimeError("Unexpected completed training configuration")
+        audit_training(folder,args.epochs)
     print("[DONE]",stage,args.family,folder,flush=True)
