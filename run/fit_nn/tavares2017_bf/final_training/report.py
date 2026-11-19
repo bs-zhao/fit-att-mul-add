@@ -8,6 +8,8 @@ import argparse
 import csv
 import json
 import math
+import os
+import tempfile
 from collections import Counter
 from pathlib import Path
 from plan import (OUTPUT, ROOT, INPUT, FAMILIES,
@@ -125,13 +127,25 @@ def create_summary(include_baseline=True):
 
 
 def save_rows(path,rows):
+    """Write full heterogeneous DDM/RACE/all columns, never partial CSVs."""
+    path=Path(path)
     path.parent.mkdir(parents=True,exist_ok=True)
     if not rows:
         raise ValueError("Nothing to save")
-    with path.open("w",newline="",encoding="utf8") as f:
-        writer=csv.DictWriter(f,fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    columns=list(dict.fromkeys(k for row in rows for k in row))
+    temp=None
+    try:
+        with tempfile.NamedTemporaryFile("w",newline="",encoding="utf8",
+                dir=path.parent,prefix=path.name+".",suffix=".tmp",
+                delete=False) as f:
+            temp=Path(f.name)
+            writer=csv.DictWriter(f,fieldnames=columns)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(temp,path)
+    finally:
+        if temp is not None:
+            temp.unlink(missing_ok=True)
 
 
 def main():

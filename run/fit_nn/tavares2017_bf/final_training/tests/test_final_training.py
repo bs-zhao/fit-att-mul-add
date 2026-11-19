@@ -16,7 +16,7 @@ sys.path.insert(0,str(BF_DIR))
 sys.path.insert(0,str(HERE))
 from final_training.plan import INPUT, OUTPUT, FAMILIES, classifier_dir, verify_final_input
 from final_training.run import parse_args, plan, _patch_isolated_output
-from report import data_from_folder
+from report import data_from_folder, save_rows
 
 
 class TestFinalStudy(unittest.TestCase):
@@ -76,6 +76,26 @@ class TestFinalStudy(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"unchanged G2"):
             mock.configure_priors(1,50,.5,5,0,1,0,3)
         self.assertEqual(len(calls),1)
+
+    def test_mixed_family_report_csv_union_and_no_truncation(self):
+        # Regression: prior report job 57565930 failed after writing the
+        # first DDM row because it lacked RACE-only winner columns.
+        rows=[
+            {"family":"ddm","new_accuracy":.9655,"new_winning_aDDM_g":17},
+            {"family":"race","new_accuracy":.9285,"new_winning_aRACE_g":13},
+            {"family":"all","new_accuracy":.92,
+             "new_winning_aDDM_g":8,"new_winning_aRACE_g":16},
+        ]
+        with tempfile.TemporaryDirectory() as root:
+            f=Path(root)/"model_recovery_comparison.csv"
+            save_rows(f,rows)
+            with f.open(newline="",encoding="utf8") as h:
+                saved=list(csv.DictReader(h))
+            self.assertEqual(len(saved),3)
+            self.assertEqual([r["family"] for r in saved],["ddm","race","all"])
+            self.assertEqual(saved[0]["new_winning_aRACE_g"],"")
+            self.assertEqual(saved[1]["new_winning_aDDM_g"],"")
+            self.assertEqual(saved[2]["new_winning_aRACE_g"],"16")
 
     def test_read_only_recovery_summary_fixtures(self):
         with tempfile.TemporaryDirectory() as tmp:
