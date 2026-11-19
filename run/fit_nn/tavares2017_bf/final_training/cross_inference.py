@@ -161,11 +161,18 @@ def infer(family,checkpoint,data,batch_size,seed):
     ex=Experiment(source_path(data))
     ids,raw,audit=ex.real()
     actual=int(np.sum(raw["summary_mask"]))
+    # The original (no 50% QC) CSV contains one long-duration trial
+    # discarded by the unchanged BF 17-feature rule. Final CSV already
+    # excluded that trial at preparation, so it has zero extra S6 removals.
+    input_n=sum(int(a["input_trials"]) for a in audit)
+    excluded_n=input_n-sum(int(a["retained_trials"]) for a in audit)
+    expected_input_n=31854 if data=="old" else 30162
+    expected_excluded_n=1 if data=="old" else 0
     if (ex.sha256!=DATA_SHA[data] or len(ids)!=25 or
         ex.max_trials!=MAX_TRIALS[data] or actual!=TRIALS[data] or
-        len(audit)!=25 or
-        any(a["input_trials"]!=a["retained_trials"] for a in audit)):
-        raise ValueError(f"Noncanonical 17-feature real input: {data}, {actual} retained")
+        len(audit)!=25 or input_n!=expected_input_n or
+        excluded_n!=expected_excluded_n):
+        raise ValueError(f"Noncanonical 17-feature real input: {data}: {input_n} input, {actual} retained, {excluded_n} excluded")
     names=list(FAMILIES[family]); k=len(names)
     model=keras.saving.load_model(validation["checkpoint_path"])
     blocks=[]
@@ -204,7 +211,8 @@ def infer(family,checkpoint,data,batch_size,seed):
         })
     fields=["subj",*names,"best_model","entropy","p_DDM","p_ACC"]
     validation.update({
-        "n_subjects":len(ids),"n_retained_trials":actual,
+        "n_subjects":len(ids),"n_input_trials":input_n,
+        "n_retained_trials":actual,"excluded_by_17feature":excluded_n,
         "input_max_trials":ex.max_trials,"batch_size":batch_size,
         "seed":seed,"checkpoint_sha256":sha256(validation["checkpoint_path"]),
         "model_prior":[1/k]*k,
