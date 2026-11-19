@@ -1,0 +1,33 @@
+name: Tavares2017 original-data formal pipeline
+
+on:
+  push:
+    paths:
+      - "run/fit_nn/tavares2017_legacy_formal/**"
+      - ".github/workflows/tavares2017-legacy-formal.yml"
+  workflow_dispatch:
+
+jobs:
+  original-formal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile independent formal scripts
+        run: python -m compileall -q run/fit_nn/tavares2017_legacy_formal
+      - name: Validate OSC Slurm syntax
+        run: bash -n run/fit_nn/tavares2017_legacy_formal/submit.sh
+      - name: Install original data adapter dependencies
+        run: python -m pip install numpy pandas
+      - name: Recreate pinned ORIGINAL data input (not final QC)
+        run: python -u run/fit_nn/tavares2017_bf/prepare_data.py
+      - name: Run frozen-input and formal training audit tests
+        run: python -m unittest discover -s run/fit_nn/tavares2017_legacy_formal/tests -v
+      - name: Dry-run all planned original-data classifiers
+        run: |
+          python -u run/fit_nn/tavares2017_legacy_formal/s4.py --family ddm --dry-run
+          python -u run/fit_nn/tavares2017_legacy_formal/s4.py --family race --dry-run
+          python -u run/fit_nn/tavares2017_legacy_formal/s4.py --family all --dry-run
