@@ -116,6 +116,17 @@ def upstream_cli(a):
         "s5":{"n_per_model":2000,"batch_size":4 if a.dataset=="tavares2017" else 25},
         "s6":{},
     }[a.stage]
+    # A genuine short smoke-test profile; never accidentally use formal
+    # budgets merely because --mode test was specified.
+    if a.mode=="test":
+        defaults={
+            "s1":{"epochs":5,"batches":2,"batch_size":4,"validation":8},
+            "s2":{"n_test":8,"draws":20,"batch_size":4},
+            "s3":{"draws":20,"batch_size":4,"ppc_draws":0},
+            "s4":{"epochs":5,"batches":2,"batch_size":4,"validation":8},
+            "s5":{"n_per_model":8,"batch_size":4},
+            "s6":{},
+        }[a.stage]
     for key,val in defaults.items():
         value=getattr(a,key)
         cli.extend(("--"+key.replace("_","-"),str(val if value is None else value)))
