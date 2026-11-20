@@ -44,7 +44,7 @@ class Final1Contract(unittest.TestCase):
                 self.assertIn(f"outputs/{dataset}_final1",str(out))
                 self.assertNotIn("unified_g2_v1",str(out))
                 cli=L.upstream_cli(a)
-                self.assertIn(str(ROOT.parent/"outputs"/f"{dataset}_final1"),cli)
+                self.assertIn(str(ROOT.parents[1]/"outputs"/f"{dataset}_final1"),cli)
         a=L.parse(["s4","--dataset","tavares2017","--family","all"])
         self.assertEqual(L.upstream_cli(a)[-8:],
                          ["--epochs","5000","--batches","128",
