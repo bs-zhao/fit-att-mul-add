@@ -1,0 +1,31 @@
+name: Food Equal and Krajbich2010 parameter decoder S1-S3
+
+on:
+  push:
+    paths:
+      - "run/fit_nn/food_equal_parameter_bf/**"
+      - "run/fit_nn/krajbich2010_parameter_bf/**"
+      - ".github/workflows/food-kraj-parameter-decoders.yml"
+  workflow_dispatch:
+
+jobs:
+  parameter-decoder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile both independent parameter pipelines
+        run: |
+          python -m compileall -q run/fit_nn/food_equal_parameter_bf
+          python -m compileall -q run/fit_nn/krajbich2010_parameter_bf
+      - name: Check Slurm scripts syntax
+        run: |
+          bash -n run/fit_nn/food_equal_parameter_bf/submit_first_two.sh
+          bash -n run/fit_nn/krajbich2010_parameter_bf/submit_first_two.sh
+      - name: Unit tests - food_equal
+        run: python -m unittest discover -s run/fit_nn/food_equal_parameter_bf/tests -v
+      - name: Unit tests - krajbich2010
+        run: python -m unittest discover -s run/fit_nn/krajbich2010_parameter_bf/tests -v
