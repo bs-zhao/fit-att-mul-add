@@ -2,9 +2,9 @@ from _shared.common import *
 from _shared.diagnostics import classifier_metrics, history_plot
 
 
-def main():
+def main(*, unified=False):
     p = parser('Balanced held-out model recovery and probability calibration',
-               classifier=True)
+               classifier=True, unified=unified)
     p.add_argument('--n-per-model', type=positive)
     p.add_argument('--batch-size', type=positive, default=25)
     a = p.parse_args()
@@ -32,4 +32,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(unified=True)

@@ -15,6 +15,8 @@ def _module(name, path):
     spec.loader.exec_module(module)
     return module
 
+unified_g2 = _module('unified_g2', HERE.parent / 'unified_g2.py')
+
 funcs = _module('kraj_legacy_funcs', LEGACY / 'tools/funcs.py')
 model_infos = _module('kraj_legacy_models', LEGACY / 'tools/model_info.py').model_infos
 MODEL_NAMES = list(model_infos)
@@ -85,7 +87,7 @@ def reconstruct_fixations(pos, dur, rt, ndt=0.0):
     return pos[:index + 1], out_dur
 
 
-def feature(values, choice, rt, pos, dur, legacy=False):
+def feature(values, choice, rt, pos, dur, legacy=False, *, scale=SCALE):
     pos, dur = np.asarray(pos, dtype=np.int64), np.asarray(dur, dtype=np.int64)
     if not len(pos) or len(pos) != len(dur) or np.any(dur < 0) or not np.isin(pos, [0,1]).all():
         raise ValueError('Invalid binary fixation sequence')
@@ -98,7 +100,7 @@ def feature(values, choice, rt, pos, dur, legacy=False):
     x = np.r_[values, np.eye(2)[choice], rt, summary].astype(np.float32)
     if not np.isfinite(x).all():
         raise ValueError('Nonfinite feature')
-    return x / SCALE
+    return x / scale
 
 def pack(rows, max_trials):
     if len(rows) <= 5 or len(rows) > max_trials:
@@ -109,13 +111,21 @@ def pack(rows, max_trials):
             'n_trials': np.array([np.log1p(len(rows))], np.float32)}
 
 class Experiment:
-    def __init__(self, path):
+    def __init__(self, path, *, unified=False):
         self.path = Path(path).resolve()
         self.df = funcs.load_food_data(self.path)
         self.value_normalization = VALUE_NORMALIZATION
         self.value_max = None
         self.value_min = None
-        if VALUE_NORMALIZATION == "dataset_max":
+        self.models = model_infos
+        self.scale = SCALE
+        if unified:
+            self.models = unified_g2.model_specifications()
+            self.scale = SCALE.copy()
+            self.scale[:2] = 1.0
+            self.value_normalization = "dataset_max"
+            self.value_min, self.value_max = unified_g2.normalize_values(self.df)
+        elif VALUE_NORMALIZATION == "dataset_max":
             # One common denominator for BOTH option-value columns and all
             # participants/trials in this dataset, computed before trial masks.
             # It is used by empirical simulator designs AND real-data features.
@@ -152,7 +162,7 @@ class Experiment:
         for sid, group in self.groups:
             rows = []
             for _, r in group.iterrows():
-                x = feature([r.v0,r.v1], int(r.choice), float(r.rt), r.arr_pos, r.arr_du)
+                x = feature([r.v0,r.v1], int(r.choice), float(r.rt), r.arr_pos, r.arr_du, scale=self.scale)
                 if x is not None:
                     rows.append(x)
             audit.append({'subj': sid, 'input_trials':len(group), 'retained_trials':len(rows), 'included':len(rows)>5})
@@ -170,7 +180,7 @@ class Experiment:
         Production uses cached empirical designs, rcd=0, and direct summary.
         """
         from c_bifood import sim_trial_aDDM, sim_trial_aRACE
-        info = model_infos[model]
+        info = self.models[model]
         params = funcs.make_params(info, rng) if params is None else params
         if group is None:
             design_idx = int(rng.integers(len(self.groups)))
@@ -214,7 +224,7 @@ class Experiment:
             if not legacy:
                 pos, dur = reconstruct_fixations(
                     orig_pos, orig_dur, rt, ndt=params.get('ndt', 0.0))
-            x = feature(values, int(choice), float(rt), pos, dur, legacy=legacy)
+            x = feature(values, int(choice), float(rt), pos, dur, legacy=legacy, scale=self.scale)
             if x is None:
                 stats['maxT_excluded'] += 1
             else:
@@ -231,7 +241,7 @@ class Experiment:
                     stats['accepted_subjects'] += 1
                     record = pack(rows, self.max_trials)
                     if not model_only:
-                        record.update({p:np.array([params[p]], np.float32) for p in model_infos[model]['free_pnames']})
+                        record.update({p:np.array([params[p]], np.float32) for p in self.models[model]['free_pnames']})
                     return record
                 stats['rejected_subjects'] += 1
             raise RuntimeError(f'{model}: 100 rejected subjects; inspect priors/design/nonhits: {stats}')

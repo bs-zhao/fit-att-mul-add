@@ -1,9 +1,9 @@
 from _shared.common import *
 
 
-def main():
+def main(*, unified=False):
     p = parser('Real-data model probabilities and pairwise Bayes factors',
-               classifier=True)
+               classifier=True, unified=unified)
     p.add_argument('--model-prior', type=float, nargs='+',
                    help='K probabilities in canonical selected-model order; '
                         'default uniform')
@@ -48,6 +48,11 @@ def main():
     df['p_DDM'] = probs[:, ddm].sum(1)
     df['p_ACC'] = probs[:, ~ddm].sum(1)
     df.to_csv(dest / 'model_probabilities.csv', index=False)
+    if unified:
+        pd.DataFrame({
+            'model': names, 'mean_probability': probs.mean(axis=0),
+            'n_subjects': len(ids),
+        }).to_csv(dest / 'mean_model_probabilities.csv', index=False)
     rows = []
     for s, sid in enumerate(ids):
         for i, mi in enumerate(names):
@@ -72,4 +77,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(unified=True)

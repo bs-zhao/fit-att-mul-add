@@ -2,6 +2,8 @@
 
 Behavioral SBI/model-comparison project designed to support multiple experiments/datasets.
 
+[Unified BayesFlow S1–S6 for Food Equal, Krajbich2010 and Tavares2017](run/fit_nn/UNIFIED_G2.md)
+
 Each experiment gets its own complete `nn_rv1`-style pipeline, its own model definitions, its own data folder, and its own output folder. Shared installable dependencies such as `c_bifood` and `data2param-flow` remain outside the experiment folders.
 
 ```text

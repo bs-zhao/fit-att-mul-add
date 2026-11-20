@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import keras
 import bayesflow as bf
-from .data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment, prior_spec
+from .data import ROOT, MODEL_NAMES, model_infos, FEATURE_NAMES, SCALE, Experiment, unified_g2, prior_spec
 
 def positive(value):
     n=int(value)
@@ -23,11 +23,15 @@ def nonnegative(value):
         raise argparse.ArgumentTypeError('must be a nonnegative integer')
     return n
 
-def parser(description, model=False, classifier=False):
+def parser(description, model=False, classifier=False, *, unified=False):
     p = argparse.ArgumentParser(description=description)
     p.add_argument('--mode', choices=['test','formal'], default='formal')
-    p.add_argument('--input', type=Path, default=ROOT/'data/tavares2017/trial_eye.csv')
-    p.add_argument('--output', type=Path, default=ROOT/'outputs/tavares2017_bf')
+    data_dir = 'tavares2017_final' if unified else 'tavares2017'
+    p.add_argument('--input', type=Path, default=ROOT/'data'/data_dir/'trial_eye.csv')
+    output = ROOT/'outputs/tavares2017_bf'
+    p.add_argument('--output', type=Path,
+                   default=output/unified_g2.PROFILE if unified else output)
+    p.set_defaults(unified=unified)
     p.add_argument('--seed', type=nonnegative, default=20261030)
     if model:
         p.add_argument('--model', choices=MODEL_NAMES, required=True)
@@ -72,10 +76,10 @@ def directory(args, classifier=False):
         return args.output / 'classifier' / args.mode
     return args.output / 'classifier' / '__'.join(names) / args.mode
 
-def adapter(model=None):
+def adapter(model=None, *, models=None):
     a = bf.Adapter().convert_dtype('float64','float32')
     if model:
-        info = model_infos[model]
+        info = (model_infos if models is None else models)[model]
         for name, (lo,hi) in zip(info['free_pnames'],info['free_pranges']):
             a.constrain(name, lower=lo, upper=hi)
         a.concatenate(info['free_pnames'], into='inference_variables')
@@ -83,8 +87,8 @@ def adapter(model=None):
         a.rename('model_indices','inference_variables')
     return a.rename('trials','summary_variables').rename('n_trials','inference_conditions')
 
-def workflow(simulator, model=None, model_names=None):
-    kw = dict(simulator=simulator, adapter=adapter(model),
+def workflow(simulator, model=None, model_names=None, *, models=None):
+    kw = dict(simulator=simulator, adapter=adapter(model, models=models),
               summary_network=bf.networks.SetTransformer(summary_dim=32),
               standardize=['inference_variables'] if model else [],
               optimizer=keras.optimizers.Adam(learning_rate=5e-4,clipnorm=1.5))
@@ -115,7 +119,8 @@ def training_args(p):
 
 def train(args, classifier=False):
     environment(args.seed)
-    ex = Experiment(args.input)
+    unified = getattr(args, 'unified', False)
+    ex = Experiment(args.input, unified=unified)
     folder = directory(args,classifier)
     folder.mkdir(parents=True,exist_ok=True)
     if (folder/'best.keras').exists() and not args.overwrite:
@@ -143,7 +148,9 @@ def train(args, classifier=False):
                num_batches_per_epoch=args.batches or (2 if args.mode=='test' else (30 if classifier else 50)),
                batch_size=args.batch_size or (4 if args.mode=='test' else 8))
     validation = validation_sim.sample(args.validation or (8 if args.mode=='test' else 64))
-    w = workflow(simulator,None if classifier else args.model,model_names=names)
+    w = workflow(simulator, None if classifier else args.model, model_names=names, models=ex.models)
+    checkpoint_names = names if classifier else [args.model]
+    profile = unified_g2.checkpoint_spec(ex, checkpoint_names) if unified else None
     # Opt-in only: final_training changes patience without changing the
     # underlying model, optimizer or any historical default.
     lr_patience = int(os.environ.get('ATT_BF_CLASSIFIER_LR_PATIENCE', '4')) if classifier else 8
@@ -151,11 +158,11 @@ def train(args, classifier=False):
     if lr_patience < 1 or early_patience <= lr_patience:
         raise ValueError('Classifier patience must satisfy 1 <= LR patience < early patience')
     dump(folder/'metadata.json',dict(bayesflow=version('bayesflow'), seed=args.seed,
-         prior_spec=prior_spec(names if classifier else [args.model]),
+         prior_spec=profile if unified else prior_spec(checkpoint_names),
          model_names=names if classifier else MODEL_NAMES, model=None if classifier else args.model,
-         parameter_names=None if classifier else model_infos[args.model]['free_pnames'],
+         parameter_names=None if classifier else ex.models[args.model]['free_pnames'],
          input_sha256=ex.sha256, max_trials=ex.max_trials, features=FEATURE_NAMES,
-         feature_scale=SCALE.tolist(), config=cfg,
+         feature_scale=ex.scale.tolist(), config=cfg,
          model_prior=[1/len(names)]*len(names) if classifier else None,
          reduce_lr_patience=lr_patience, early_stopping_patience=early_patience))
     callbacks=[AtomicBest(folder/'best.keras'), keras.callbacks.CSVLogger(str(folder/'history.csv')),
@@ -169,13 +176,19 @@ def load(args, classifier=False):
     environment(args.seed)
     folder=directory(args,classifier)
     meta=json.loads((folder/'metadata.json').read_text())
+    unified = getattr(args, 'unified', False)
     if classifier and meta['model_names'] != selected_models(args):
         raise ValueError('Checkpoint model_names do not match --models selection')
-    if not classifier and meta.get('prior_spec') != prior_spec([args.model]):
+    if not unified and not classifier and meta.get('prior_spec') != prior_spec([args.model]):
         raise ValueError('Parameter posterior prior_spec does not match this experiment')
-    ex=Experiment(args.input)
+    ex = Experiment(args.input, unified=unified)
     if ex.sha256 != meta['input_sha256']:
         raise ValueError('Input CSV differs from the training design. Use the original training CSV.')
+    if unified:
+        names = selected_models(args) if classifier else [args.model]
+        unified_g2.validate_checkpoint(meta, ex, names, FEATURE_NAMES, folder)
+    elif (meta.get('prior_spec') or {}).get('profile') == unified_g2.PROFILE:
+        raise ValueError(f'Use the unified S1–S6 entry points for this checkpoint: {folder}')
     return keras.saving.load_model(folder/'best.keras'),ex,folder
 
 def posterior(estimator, raw, names, draws, batch_size=25):

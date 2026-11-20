@@ -171,7 +171,7 @@ def run(stage,a):
     before=sys.argv
     try:
         sys.argv=argv
-        runpy.run_path(str(UPSTREAM/STAGE_SCRIPTS[stage]),run_name="__main__")
+        runpy.run_path(str(UPSTREAM/STAGE_SCRIPTS[stage]))["main"]()
     finally:
         sys.argv=before
     if stage=="s1":
