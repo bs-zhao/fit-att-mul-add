@@ -149,9 +149,8 @@ def main(argv=None):
     # The Final1 patch occurs *before* common/workflow imports.
     source=importlib.import_module("_shared.data")
     models=install(source.unified_g2)
-    from _shared import common
-    if common.unified_g2 is not source.unified_g2:
-        raise RuntimeError("G2 module alias mismatch; refusing to run")
+    # Dry-run remains lightweight: no Keras/BayesFlow import on login nodes.
+    # They are imported only when an actual S1-S6 calculation is requested.
     ex=source.Experiment(data,unified=True)
     audit=audit_experiment(ex)
     output=folder(a)
@@ -170,6 +169,9 @@ def main(argv=None):
     if a.dry_run:
         print("[DRY RUN] Verified unified 8 models, fixed/free parameters, priors, source values",flush=True)
         return
+    from _shared import common
+    if common.unified_g2 is not source.unified_g2:
+        raise RuntimeError("G2 module alias mismatch; refusing to run")
     if a.stage in ("s2","s3","s5","s6"):
         # Verify all checkpoint metadata before S2/S3/S5/S6, not only after loading.
         metadata_file=output/"metadata.json"
