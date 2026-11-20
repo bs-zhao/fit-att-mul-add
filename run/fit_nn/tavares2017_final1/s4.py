@@ -1,5 +1,8 @@
 """tavares2017 Final1 S4 stage."""
 import sys
-from run import main
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+from final1_launcher import main
 if __name__=="__main__":
-    main(["s4",*sys.argv[1:]])
+    main(["s4","--dataset","tavares2017",*sys.argv[1:]])
