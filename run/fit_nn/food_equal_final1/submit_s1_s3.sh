@@ -16,8 +16,8 @@ for model in "${MODELS[@]}"; do
   python -u s1.py --model "$model" --dry-run >/dev/null
 done
 for model in "${MODELS[@]}"; do
-  job1=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=100:00:00 --mem=64G --job-name="F1-S1-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s1_$model_%j.out" --wrap="cd $HERE && python -u s1.py --model $model")
-  job2=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=08:00:00 --mem=32G --dependency=afterok:"$job1" --job-name="F1-S2-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s2_$model_%j.out" --wrap="cd $HERE && python -u s2.py --model $model")
-  job3=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=04:00:00 --mem=32G --dependency=afterok:"$job2" --job-name="F1-S3-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s3_$model_%j.out" --wrap="cd $HERE && python -u s3.py --model $model")
+  job1=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=100:00:00 --mem=64G --job-name="F1-S1-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s1_${model}_%j.out" --wrap="cd $HERE && python -u s1.py --model $model")
+  job2=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=08:00:00 --mem=32G --dependency=afterok:"$job1" --job-name="F1-S2-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s2_${model}_%j.out" --wrap="cd $HERE && python -u s2.py --model $model")
+  job3=$(sbatch --parsable --account=PDE0114 --gres=gpu:1 --cpus-per-task=4 --time=04:00:00 --mem=32G --dependency=afterok:"$job2" --job-name="F1-S3-$model" --output="$ROOT/outputs/food_equal_final1/slurm/s3_${model}_%j.out" --wrap="cd $HERE && python -u s3.py --model $model")
   echo "$model: S1=$job1 -> S2=$job2 -> S3=$job3"
 done
