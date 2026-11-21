@@ -94,3 +94,8 @@ a 5000 epoch upper limit; S2/S5 need to pass recovery checks.
 Tavares experiment with its existing trial filters), NOT
 `data/tavares2017_final/trial_eye.csv`. Choose the other source only by
 explicitly passing --input to all stages, including S1/S4.
+
+
+### All-eight S1→S2→S3 Slurm pipeline
+
+Run `bash submit_s1_s3.sh` from this directory. It queues 8 S1 training jobs followed by their own S2 parameter recovery and S3 real-data decoding jobs, with Slurm `afterok` dependencies (24 jobs total). S1: 100h, 64G; S2: 8h, 32G; S3: 4h, 32G. Final1 shared eight-model priors, dataset-max normalized values; no modifications to S4–S6 checkpoints. The script checks existing S1 best.keras files. Do not submit twice while jobs are queued.
