@@ -34,10 +34,18 @@ def arguments(argv=None):
     p.add_argument("--n",type=int,default=1000,help="Accepted simulated participants")
     p.add_argument("--batch-size",type=int,default=25)
     p.add_argument("--seed",type=int,default=20261102)
+    p.add_argument("--gamma-min",type=float,default=0.0,
+                   help="RACE-Add GENERATOR ONLY: lower gamma bound (default Final1 0)")
+    p.add_argument("--gamma-max",type=float,default=10.0,
+                   help="RACE-Add GENERATOR ONLY: upper gamma bound (default Final1 10)")
     p.add_argument("--dry-run",action="store_true")
     args=p.parse_args(argv)
     if min(args.n,args.batch_size)<1 or args.seed<0:
         p.error("--n/--batch-size must be positive, seed nonnegative")
+    import math
+    if not (math.isfinite(args.gamma_min) and math.isfinite(args.gamma_max)
+            and 0 <= args.gamma_min < args.gamma_max):
+        p.error("--gamma-min/max must be finite, 0 <= min < max")
     return args
 
 def main(argv=None):
@@ -48,10 +56,20 @@ def main(argv=None):
     ex=source.Experiment(args.input,unified=True)
     audit=audit_experiment(ex)
     folder=args.output/"classifier"/"__".join(DDM)/args.mode
-    dest=args.output/"cross_architecture"/"generated_aRACE_g__tested_DDM4"/args.mode/f"seed_{args.seed}"
+    gamma_bounds=(float(args.gamma_min),float(args.gamma_max))
+    # Preserve previous Final1 U(0,10) output path for compatibility.
+    gamma_tag=lambda x: str(float(x)).replace(".","p")
+    variant=(f"gamma_{gamma_tag(gamma_bounds[0])}_to_{gamma_tag(gamma_bounds[1])}"
+             if gamma_bounds!=tuple(PRIORS["gamma"]) else None)
+    dest=args.output/"cross_architecture"/"generated_aRACE_g__tested_DDM4"
+    if variant is not None:
+        dest=dest/variant
+    dest=dest/args.mode/f"seed_{args.seed}"
     print("[FINAL1 CROSS PREFLIGHT]",json.dumps({
         "generator":GENERATOR,"classifier":DDM,
-        "priors":PRIORS,"dataset":audit,"checkpoint":str(folder),
+        "final1_classifier_priors":PRIORS,
+        "generator_priors":{"d":PRIORS["d"],"a":PRIORS["a"],"gamma":gamma_bounds},
+        "dataset":audit,"checkpoint":str(folder),
         "destination":str(dest)},indent=2),flush=True)
     if args.dry_run:
         return
@@ -76,6 +94,14 @@ def main(argv=None):
     # Load exact Final1 checkpoint. Do NOT route through the old non-unified loader.
     estimator=keras.saving.load_model(folder/"best.keras")
 
+    # Modify ONLY the generating RACE-Add sampling range, and only AFTER
+    # validating and loading the unchanged Final1 four-DDM checkpoint.
+    gen_info=ex.models[GENERATOR]
+    gamma_idx=gen_info["free_pnames"].index("gamma")
+    gamma_idx_ml=gen_info["free_pnames_ml"].index("gamma")
+    gen_info["free_pranges"][gamma_idx]=gamma_bounds
+    gen_info["free_pranges_ml"][gamma_idx_ml]=gamma_bounds
+    assert tuple(gen_info["free_pranges"][gamma_idx])==gamma_bounds
     sim, counters=ex.simulator(bf,GENERATOR,args.seed+800000,model_only=False)
     if dest.exists() and any(dest.iterdir()):
         raise FileExistsError(f"Cross experiment already exists: {dest}")
@@ -83,6 +109,9 @@ def main(argv=None):
     rows=[]
     for start in range(0,args.n,args.batch_size):
         raw=sim.sample(min(args.batch_size,args.n-start))
+        gamma_sample=np.asarray(raw["gamma"],dtype=float).reshape(-1)
+        if np.any(gamma_sample < gamma_bounds[0]) or np.any(gamma_sample > gamma_bounds[1]):
+            raise RuntimeError("Generated gamma outside requested range")
         conditions={k:raw[k] for k in ("trials","summary_mask","n_trials")}
         probs, log_bf=classify(estimator,conditions,DDM)
         for j in range(len(probs)):
@@ -106,7 +135,9 @@ def main(argv=None):
         "experiment":"food_equal_final1_race_add_to_ddm4",
         "profile":PROFILE,
         "generator":GENERATOR,
-        "generator_prior":{p:list(PRIORS[p]) for p in ("d","a","gamma")},
+        "generator_prior":{"d":list(PRIORS["d"]),"a":list(PRIORS["a"]),
+                           "gamma":list(gamma_bounds)},
+        "classifier_training_priors":{p:list(v) for p,v in PRIORS.items()},
         "ddm_models":DDM,
         "trained_model_prior":[.25]*4,
         "n":len(frame),
