@@ -94,3 +94,10 @@ a 5000 epoch upper limit; S2/S5 need to pass recovery checks.
 Tavares experiment with its existing trial filters), NOT
 `data/tavares2017_final/trial_eye.csv`. Choose the other source only by
 explicitly passing --input to all stages, including S1/S4.
+
+
+### One-command eight-model parameter inference (S1 → S2 → S3)
+
+Run `bash submit_s1_s3.sh` from `run/fit_nn/tavares2017_final1/` after `git pull --ff-only`. The script launches eight independent BayesFlow parameter-posterior trainers (S1); per-model `afterok` Slurm dependencies schedule held-out recovery (S2) and real-data posterior decoding (S3) only after their prerequisites succeed. There are **24 total jobs, not 24 concurrent GPU trainings**. S1 uses the existing Final1 defaults (5,000 max epochs, 50 × 64 simulated subjects/epoch, 2,000 validation subjects), S2 uses 2,000 held-out synthetic subjects and 1,000 posterior draws, and S3 uses 2,000 posterior draws per real subject with PPC disabled. Default Slurm time limits are S1 100h, S2 8h, and S3 4h (override with TRAIN_TIME/RECOVERY_TIME/DECODE_TIME). S1/S2/S3 share the exact Final1 model definitions, `d~U(0.1,5), a~U(0.5,10), theta~U(0,1), gamma~U(0,10)`, and raw item values divided by the dataset-wide maximum.
+
+Results: `outputs/tavares2017_final1/<model>/formal/` (S1 checkpoints and history; S2 `diagnostics/`; S3 `real_data/`), and `outputs/tavares2017_final1/slurm/` for job logs. All existing S4–S6 classifier checkpoints are left untouched. The script refuses to launch when any model already has S1 checkpoint or metadata, but **cannot reliably detect queued duplicate Slurm jobs**, so run it only once. To use completed S1 checkpoints, use `bash submit.sh s2 all` and, after S2 succeeds, `bash submit.sh s3 all` instead. Validate convergence and recovery metrics before interpreting S3 estimates.
