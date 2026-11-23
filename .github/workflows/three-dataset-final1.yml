@@ -32,5 +32,8 @@ jobs:
           bash -n run/fit_nn/food_equal_final1/submit.sh
           bash -n run/fit_nn/krajbich2010_final1/submit.sh
           bash -n run/fit_nn/tavares2017_final1/submit.sh
+          bash -n run/fit_nn/food_equal_final1/submit_s1_s3.sh
+          bash -n run/fit_nn/krajbich2010_final1/submit_s1_s3.sh
+          bash -n run/fit_nn/tavares2017_final1/submit_s1_s3.sh
       - name: Check three data sources and exact mathematical priors
         run: python -m unittest discover -s run/fit_nn/tests -p test_unified_final1.py -v
