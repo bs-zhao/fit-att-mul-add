@@ -99,3 +99,16 @@ explicitly passing --input to all stages, including S1/S4.
 ### All-eight S1→S2→S3 Slurm pipeline
 
 Run `bash submit_s1_s3.sh` from this directory. It queues 8 S1 training jobs followed by their own S2 parameter recovery and S3 real-data decoding jobs, with Slurm `afterok` dependencies (24 jobs total). S1: 100h, 64G; S2: 8h, 32G; S3: 4h, 32G. Final1 shared eight-model priors, dataset-max normalized values; no modifications to S4–S6 checkpoints. The script checks existing S1 best.keras files. Do not submit twice while jobs are queued.
+
+
+### Cross-architecture simulation with S3-fitted real-participant parameters
+
+Run `cross_s3_fitted_race_add_vs_ddm4.py` after S3 RACE-Add (`aRACE_g`) and S4 DDM4 are complete. The script loads `outputs/food_equal_final1/aRACE_g/formal/real_data/posterior_samples.npz`, computes each participant's **posterior mean** of `d,a,gamma` (fixed across repeats), preserves that participant's exact empirical value/gaze design, generates **10 independent RACE-Add datasets per person**, and classifies them with the EXISTING Final1 DDM4 `best.keras`. Fitted parameter draws are NOT sampled from the prior; S1/S4 are NOT retrained. Metadata and matching real subject IDs are verified. Simulated datasets with <=5 retained trials are explicitly marked invalid and not silently resampled.
+
+```bash
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/food_equal_final1
+python -u cross_s3_fitted_race_add_vs_ddm4.py --dry-run
+python -u cross_s3_fitted_race_add_vs_ddm4.py --repeats 10 --batch-size 10
+```
+
+Outputs in `outputs/food_equal_final1/cross_architecture/S3_fitted_aRACE_g__tested_DDM4/formal/seed_20261126_repeats_10/`: `per_simulation.csv` (one row per attempted replication), `per_subject.csv`, `summary.json`, `ddm_logBF_mul_add.png`. The paired per-subject analysis distinguishes the 10 repeated draws from 10 independent participants. Existing output is never overwritten.

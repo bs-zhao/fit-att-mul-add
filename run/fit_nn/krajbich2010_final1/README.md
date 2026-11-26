@@ -116,3 +116,16 @@ python -u cross_race_add_vs_ddm4.py --gamma-min 0.01 --gamma-max 2 --n 1000 --ba
 ```
 
 Output: `outputs/krajbich2010_final1/cross_architecture/generated_aRACE_g__tested_DDM4/<gamma-variant-if-nondefault>/formal/seed_20261102/` contains `per_simulation.csv`, `summary.json`, and `ddm_logBF_mul_add.png`. Existing results are never overwritten; reruns with identical seed and gamma bounds fail if output exists. Validate the existing DDM4 S4 checkpoint before production use; no OSC GPU runtime verification has been performed on this newly added Final1 entry point.
+
+
+### Cross-architecture simulation with S3-fitted real-participant parameters
+
+Run `cross_s3_fitted_race_add_vs_ddm4.py` after S3 RACE-Add (`aRACE_g`) and S4 DDM4 are complete. The script loads `outputs/krajbich2010_final1/aRACE_g/formal/real_data/posterior_samples.npz`, computes each participant's **posterior mean** of `d,a,gamma` (fixed across repeats), preserves that participant's exact empirical value/gaze design, generates **10 independent RACE-Add datasets per person**, and classifies them with the EXISTING Final1 DDM4 `best.keras`. Fitted parameter draws are NOT sampled from the prior; S1/S4 are NOT retrained. Metadata and matching real subject IDs are verified. Simulated datasets with <=5 retained trials are explicitly marked invalid and not silently resampled.
+
+```bash
+cd /fs/scratch/PAS2943/Benson/Projects/EEG-EYE/run/fit_nn/krajbich2010_final1
+python -u cross_s3_fitted_race_add_vs_ddm4.py --dry-run
+python -u cross_s3_fitted_race_add_vs_ddm4.py --repeats 10 --batch-size 10
+```
+
+Outputs in `outputs/krajbich2010_final1/cross_architecture/S3_fitted_aRACE_g__tested_DDM4/formal/seed_20261126_repeats_10/`: `per_simulation.csv` (one row per attempted replication), `per_subject.csv`, `summary.json`, `ddm_logBF_mul_add.png`. The paired per-subject analysis distinguishes the 10 repeated draws from 10 independent participants. Existing output is never overwritten.
