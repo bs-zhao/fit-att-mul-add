@@ -101,3 +101,18 @@ explicitly passing --input to all stages, including S1/S4.
 Run `bash submit_s1_s3.sh` from `run/fit_nn/tavares2017_final1/` after `git pull --ff-only`. The script launches eight independent BayesFlow parameter-posterior trainers (S1); per-model `afterok` Slurm dependencies schedule held-out recovery (S2) and real-data posterior decoding (S3) only after their prerequisites succeed. There are **24 total jobs, not 24 concurrent GPU trainings**. S1 uses the existing Final1 defaults (5,000 max epochs, 50 × 64 simulated subjects/epoch, 2,000 validation subjects), S2 uses 2,000 held-out synthetic subjects and 1,000 posterior draws, and S3 uses 2,000 posterior draws per real subject with PPC disabled. Default Slurm time limits are S1 100h, S2 8h, and S3 4h (override with TRAIN_TIME/RECOVERY_TIME/DECODE_TIME). S1/S2/S3 share the exact Final1 model definitions, `d~U(0.1,5), a~U(0.5,10), theta~U(0,1), gamma~U(0,10)`, and raw item values divided by the dataset-wide maximum.
 
 Results: `outputs/tavares2017_final1/<model>/formal/` (S1 checkpoints and history; S2 `diagnostics/`; S3 `real_data/`), and `outputs/tavares2017_final1/slurm/` for job logs. All existing S4–S6 classifier checkpoints are left untouched. The script refuses to launch when any model already has S1 checkpoint or metadata, but **cannot reliably detect queued duplicate Slurm jobs**, so run it only once. To use completed S1 checkpoints, use `bash submit.sh s2 all` and, after S2 succeeds, `bash submit.sh s3 all` instead. Validate convergence and recovery metrics before interpreting S3 estimates.
+
+
+### Final1 cross-architecture: generate RACE-Add, classify with pretrained DDM4
+
+The dataset-specific `cross_race_add_vs_ddm4.py` runs the **same Final1 architecture-mismatch simulation** as Food Equal. It uses the original `data/tavares2017/trial_eye.csv` after global-maximum normalization, generates aRACE_g (RACE-Add) data with `d~U(0.1,5)`, `a~U(0.5,10)`, and default `gamma~U(0,10)` or a custom narrower generation-only range, then estimates model probabilities and log BF(Mul/Add) using the **existing** `outputs/tavares2017_final1/classifier/aDDM_1__aDDM_2__aDDM_t__aDDM_g/formal/best.keras` checkpoint. DDM4 is **not retrained**; classifier priors stay the canonical Final1 ones. Supports `--dry-run`, `--n`, `--batch-size`, `--seed`, `--gamma-min`, `--gamma-max`.
+
+```bash
+cd run/fit_nn/tavares2017_final1
+# Full Final1 gamma range, 1000 simulated subjects
+python -u cross_race_add_vs_ddm4.py --n 1000 --batch-size 25
+# Focused low-gamma check, separate output location
+python -u cross_race_add_vs_ddm4.py --gamma-min 0.01 --gamma-max 2 --n 1000 --batch-size 25
+```
+
+Output: `outputs/tavares2017_final1/cross_architecture/generated_aRACE_g__tested_DDM4/<gamma-variant-if-nondefault>/formal/seed_20261102/` contains `per_simulation.csv`, `summary.json`, and `ddm_logBF_mul_add.png`. Existing results are never overwritten; reruns with identical seed and gamma bounds fail if output exists. Validate the existing DDM4 S4 checkpoint before production use; no OSC GPU runtime verification has been performed on this newly added Final1 entry point.
