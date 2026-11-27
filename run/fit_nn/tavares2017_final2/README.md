@@ -36,3 +36,33 @@ TIME=08:00:00 MEM=32G bash submit.sh s6 three
 ```
 
 For quick preflight: `python -u s4.py --family ddm --dry-run`.
+
+
+### Cross-architecture simulations (Final2 ONLY)
+
+Both scripts use **the existing Final2 S4 DDM4 checkpoint** and Final2 `gamma ~ U(0,2)`, with all other settings identical to Final1.
+
+**Prior-generated RACE-Add → DDM4** (requires only Final2 S4 DDM4):
+```bash
+python -u cross_race_add_vs_ddm4.py --n 1000 --batch-size 4
+```
+The RACE-Add generator draws d~U(0.1,5), a~U(0.5,10), gamma~U(0,2).
+The output is isolated under `outputs/tavares2017_final2/cross_architecture/generated_aRACE_g__tested_DDM4/formal/`.
+Use `--dry-run` to inspect inputs and the intended checkpoint.
+
+**S3-fitted RACE-Add → DDM4** (requires **Final2** RACE-Add S1 and S3 outputs, not Final1):
+```bash
+# If Final2 S1 has never been submitted:
+bash submit_s1_s3_race_add.sh
+# After successful S3:
+python -u cross_s3_fitted_race_add_vs_ddm4.py --repeats 10 --batch-size 4
+```
+Uses each subject's **Final2 S3 joint posterior mean** (d,a,gamma), fixed for 10 independent behavior simulations, preserving the subject's empirical value and gaze schedules. Requires `outputs/tavares2017_final2/aRACE_g/formal/real_data/posterior_samples.npz`. It validates that `gamma <= 2` and checks checkpoint metadata; no Final1 posterior or checkpoint is used. Output is isolated under `outputs/tavares2017_final2/cross_architecture/S3_fitted_aRACE_g__tested_DDM4/formal/`.
+
+If the S1 checkpoint already exists, do not rerun `submit_s1_s3_race_add.sh`; submit S2 and S3 individually:
+```bash
+bash submit.sh s2 aRACE_g
+# After S2 completes:
+bash submit.sh s3 aRACE_g
+```
+Both experiments retain per-simulation probabilities, log BF(Mul/Add), summary statistics and a histogram; S3-fitted additionally creates per-subject summaries. Do not submit the same experiment twice with the same seed/repeats unless you have archived the first output.
